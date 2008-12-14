@@ -36,6 +36,12 @@ namespace RayTracerXNA
             set { scale = value; scaleMatrix = Matrix.CreateScale(scale); }
         }
 
+        private BoundingSphere boundingSphere;
+        public BoundingSphere getBoundingSphere()
+        {
+            return boundingSphere.Transform(Transform);
+        }
+
         public Matrix Transform
         {
             get {
@@ -185,6 +191,9 @@ namespace RayTracerXNA
                 vertexData[k] = new VertexPositionNormalTexture(vector, Vector3.Negate(vector), Vector2.Zero);
                 ++k;
             }
+
+            // create bounding sphere
+            boundingSphere = BoundingSphere.CreateFromPoints(vertices);
         }
     }
 }
