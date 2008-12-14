@@ -37,7 +37,17 @@ namespace RayTracerXNA
         Matrix viewMatrix;
         Matrix projectionMatrix;
 
+        float nearDist = 0.1f;
+        float farDist = 50.0f;
+
+#if EFFECT
         BasicEffect effect;
+#else 
+        Ray[,] rayTable = new Ray[(int)WIDTH, (int)HEIGHT];
+        Texture2D projection;
+#endif
+
+        readonly Vector3 lightPos = new Vector3(5f, 8f, 15f);
 
         readonly Vector3 cameraPos = new Vector3(3f, 4f, 15f);
         readonly Vector3 cameraTarget = new Vector3(3f, 0f, -70f);
@@ -85,11 +95,17 @@ namespace RayTracerXNA
             GraphicsDevice.VertexDeclaration = new VertexDeclaration(GraphicsDevice, VertexPositionNormalTexture.VertexElements);
 
             viewMatrix = Matrix.CreateLookAt(cameraPos, cameraTarget, Vector3.Up);
-            projectionMatrix = Matrix.CreatePerspectiveFieldOfView(MathHelper.PiOver4, GraphicsDevice.Viewport.AspectRatio, 0.1f, 50.0f);
+            projectionMatrix = Matrix.CreatePerspectiveFieldOfView(MathHelper.PiOver4, GraphicsDevice.Viewport.AspectRatio, nearDist, farDist);
 
+#if EFFECT
             initEffect();
+#else
+            populateRayTable();
+            projection = new Texture2D(GraphicsDevice, (int)WIDTH, (int)HEIGHT);
+#endif
         }
 
+#if EFFECT
         public void initEffect()
         {
             effect = new BasicEffect(GraphicsDevice, new EffectPool());
@@ -97,7 +113,7 @@ namespace RayTracerXNA
             effect.LightingEnabled = true;
 
             effect.DirectionalLight0.Enabled = true;
-            effect.DirectionalLight0.Direction = Vector3.Normalize(new Vector3(5f, 8f, 15f));
+            effect.DirectionalLight0.Direction = Vector3.Normalize(lightPos);
             effect.DirectionalLight0.DiffuseColor = new Vector3(.5f, .5f, .5f);
             effect.DirectionalLight0.SpecularColor = new Vector3(1f, 1f, 1f);
             effect.SpecularPower = 5f;
@@ -106,6 +122,23 @@ namespace RayTracerXNA
             effect.View = viewMatrix;
             effect.Projection = projectionMatrix;
         }
+#else  
+        private void populateRayTable()
+        {
+            Ray ray = new Ray(cameraPos, Vector3.Zero);
+            Vector3 viewPlaneVec = Vector3.Zero;
+
+            for (int x = 0; x < WIDTH; ++x)
+            {
+                for (int y = 0; y < HEIGHT; ++y)
+                {
+                    viewPlaneVec = GraphicsDevice.Viewport.Unproject(new Vector3(x, y, 0), projectionMatrix, viewMatrix, worldMatrix);
+                    ray.Direction = Vector3.Normalize(viewPlaneVec - cameraPos);
+                    rayTable[x, y] = ray;
+                }
+            }
+        }
+#endif
 
         /// <summary>
         /// UnloadContent will be called once per game and is the place to unload
@@ -133,7 +166,7 @@ namespace RayTracerXNA
 
             // TODO: Add your update logic here
             MouseState mouseState = Mouse.GetState();
-            sphere1.Rotation = Quaternion.CreateFromAxisAngle(rotVec, theta);
+            //sphere1.Rotation = Quaternion.CreateFromAxisAngle(rotVec, theta);
             theta += degree;
             if (theta >= MathHelper.TwoPi) 
                 theta -= MathHelper.TwoPi;
@@ -151,6 +184,18 @@ namespace RayTracerXNA
             //GraphicsDevice.RenderState.FillMode = FillMode.WireFrame;
 
             // TODO: Add your drawing code here
+#if EFFECT
+            effectDraw();
+#else
+            rayTracerDraw();
+#endif
+
+            base.Draw(gameTime);
+        }
+
+#if EFFECT
+        private void effectDraw()
+        {
             effect.World = Matrix.Identity;
             effect.Begin();
             foreach (EffectTechnique tech in effect.Techniques)
@@ -160,7 +205,7 @@ namespace RayTracerXNA
                     pass.Begin();
                     GraphicsDevice.DrawUserPrimitives(PrimitiveType.TriangleList, floorVertices, 0, floorVertices.Length / 3);
                     pass.End();
-                }   
+                }
             }
             effect.End();
 
@@ -189,8 +234,68 @@ namespace RayTracerXNA
                 }
             }
             effect.End();
-
-            base.Draw(gameTime);
         }
+#else
+        private void rayTracerDraw()
+        {
+            Color[] colorData = new Color[(int)WIDTH * (int)HEIGHT];
+
+            for (int y = 0; y < HEIGHT; ++y)
+            {
+                for (int x = 0; x < WIDTH; ++x)
+                {
+                    Ray ray = rayTable[x, y];
+                    int index = (y * (int)WIDTH) + x;
+
+                    // get closest intersection
+                    float? dist = float.PositiveInfinity;
+
+                    GeodesicIcosahedron intersected = null;
+
+                    // floor
+
+
+
+                    // sphere1
+                    float? s1Dist = ray.Intersects(sphere1.getBoundingSphere());
+                    if (s1Dist < dist)
+                    {
+                        dist = s1Dist;
+                        intersected = sphere1;
+                    }
+
+                    // sphere2
+                    float? s2Dist = ray.Intersects(sphere2.getBoundingSphere());
+                    if (s2Dist < s1Dist)
+                    {
+                        dist = s2Dist;
+                        intersected = sphere2;
+                    }
+
+                    if (intersected != null)
+                    {
+                        // get intersection
+                        Vector3 intersectVector = Vector3.Multiply(ray.Position + ray.Direction, (float)dist);
+                        Vector3 intersectNormal = Vector3.Normalize(intersectVector - intersected.getBoundingSphere().Center);
+                        Vector3 lightVector = Vector3.Normalize(intersectVector - lightPos);
+                        float diffuseLight = Vector3.Dot(lightVector, intersectNormal);
+                        colorData[index] = new Color(new Vector3(diffuseLight, diffuseLight, diffuseLight));
+                    }
+                    else
+                    {
+                        // use background color
+                        colorData[index] = Color.Black;
+                    }
+                }
+            }
+            projection = new Texture2D(GraphicsDevice, (int)WIDTH, (int)HEIGHT);
+            projection.SetData<Color>(colorData);
+
+            spriteBatch.Begin();
+            spriteBatch.Draw(projection, Vector2.Zero, Color.White);
+            spriteBatch.End();
+
+        }
+#endif
     }
 }
