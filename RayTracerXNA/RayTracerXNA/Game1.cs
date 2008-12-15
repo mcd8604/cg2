@@ -22,6 +22,7 @@ namespace RayTracerXNA
         GraphicsDeviceManager graphics;
         SpriteBatch spriteBatch;
 
+#if EFFECT
         private readonly VertexPositionNormalTexture[] floorVertices = {
             new VertexPositionNormalTexture(new Vector3(8, 0, 8), Vector3.Down, Vector2.Zero),
             new VertexPositionNormalTexture(new Vector3(-8, 0, 8), Vector3.Down, new Vector2(1f, 0f)),
@@ -29,10 +30,15 @@ namespace RayTracerXNA
             new VertexPositionNormalTexture(new Vector3(8, 0, -16), Vector3.Down, new Vector2(0f, 1f)),
             new VertexPositionNormalTexture(new Vector3(-8, 0, 8), Vector3.Down, new Vector2(1f, 0f)),
             new VertexPositionNormalTexture(new Vector3(-8, 0, -16), Vector3.Down, Vector2.One)};
-
+        
         GeodesicIcosahedron sphere1;
         GeodesicIcosahedron sphere2;
-
+#else
+        List<Primitive> primitives;
+        Primitive floor;
+        Primitive sphere1;
+        Primitive sphere2;
+#endif
         Matrix worldMatrix;
         Matrix viewMatrix;
         Matrix projectionMatrix;
@@ -67,8 +73,9 @@ namespace RayTracerXNA
         protected override void Initialize()
         {
             // TODO: Add your initialization logic here
-            sphere1 = new GeodesicIcosahedron(this, 5);
-            sphere2 = new GeodesicIcosahedron(this, 2);
+#if Effect
+            sphere1 = new GeodesicIcosahedron(this, 1);
+            sphere2 = new GeodesicIcosahedron(this, 1);
             sphere1.Position = new Vector3(3f, 4f, 11f);
             sphere2.Position = new Vector3(1.5f, 3f, 9f);
             sphere1.Scale = 0.75f;
@@ -76,7 +83,15 @@ namespace RayTracerXNA
 
             Components.Add(sphere1);
             Components.Add(sphere2);
-
+#else
+            primitives = new List<Primitive>();
+            floor = new Square(new Vector3(8, 0, 8), new Vector3(-8, 0, -16), new Vector3(8, 0, -16), new Vector3(-8, 0, -16));
+            primitives.Add(floor);
+            sphere1 = new Sphere(new Vector3(3f, 4f, 11f), 1f);
+            primitives.Add(sphere1);
+            sphere2 = new Sphere(new Vector3(1.5f, 3f, 9f), 1f);
+            primitives.Add(sphere2);
+#endif
             worldMatrix = Matrix.Identity;
 
             base.Initialize();
@@ -249,42 +264,46 @@ namespace RayTracerXNA
 
                     // get closest intersection
                     float? dist = float.PositiveInfinity;
+                    float? curDist = null;
+                    Primitive intersected = null;
 
-                    GeodesicIcosahedron intersected = null;
-
-                    // floor
-
-
-
-                    // sphere1
-                    float? s1Dist = ray.Intersects(sphere1.getBoundingSphere());
-                    if (s1Dist < dist)
+                    foreach (Primitive primitive in primitives)
                     {
-                        dist = s1Dist;
-                        intersected = sphere1;
-                    }
-
-                    // sphere2
-                    float? s2Dist = ray.Intersects(sphere2.getBoundingSphere());
-                    if (s2Dist < s1Dist)
-                    {
-                        dist = s2Dist;
-                        intersected = sphere2;
+                        curDist = primitive.Intersects(ray);
+                        if (curDist < dist)
+                        {
+                            dist = curDist;
+                            intersected = primitive;
+                        }
                     }
 
                     if (intersected != null)
                     {
-                        // get intersection
-                        Vector3 intersectVector = Vector3.Multiply(ray.Position + ray.Direction, (float)dist);
-                        Vector3 intersectNormal = Vector3.Normalize(intersectVector - intersected.getBoundingSphere().Center);
-                        Vector3 lightVector = Vector3.Normalize(intersectVector - lightPos);
-                        float diffuseLight = Vector3.Dot(lightVector, intersectNormal);
+                        // find polygon intersection
+                        /*VertexPositionNormalTexture[] vertexData = intersected.VertexData;
+                        float? closestDist = float.PositiveInfinity;
+                        Vector3 polyNormal = Vector3.Zero;
+                        for (int i = 0; i < vertexData.Length; i += 3)
+                        {
+                            Plane p = new Plane(vertexData[i].Position, vertexData[i + 1].Position, vertexData[i + 2].Position);
+                            float? polyDist = ray.Intersects(p);
+                            if (polyDist < closestDist)
+                            {
+                                polyNormal = p.Normal;
+                                closestDist = polyDist; 
+                            }
+                        }*/
+
+                        // calculate lighting
+                        Vector3 intersectPoint = ray.Position + Vector3.Multiply(ray.Direction, (float)dist);
+                        Vector3 lightVector = Vector3.Normalize(intersectPoint - lightPos);
+                        float diffuseLight = Vector3.Dot(lightVector, intersected.GetIntersectNormal(intersectPoint)); 
                         colorData[index] = new Color(new Vector3(diffuseLight, diffuseLight, diffuseLight));
                     }
                     else
                     {
                         // use background color
-                        colorData[index] = Color.Black;
+                        colorData[index] = Color.CornflowerBlue;
                     }
                 }
             }
