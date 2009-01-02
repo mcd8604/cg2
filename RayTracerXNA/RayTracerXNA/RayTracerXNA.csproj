@@ -80,6 +80,8 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="GeodesicIcosahedron.cs" />
+    <Compile Include="Light.cs" />
+    <Compile Include="PhongModel.cs" />
     <Compile Include="Quad.cs" />
     <Compile Include="Primitive.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
