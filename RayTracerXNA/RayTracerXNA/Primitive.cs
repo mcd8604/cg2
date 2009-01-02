@@ -8,11 +8,51 @@ namespace RayTracerXNA
 {
     abstract class Primitive
     {
-        protected Color color;
-        public Color MyColor
+
+#region Phong parameters
+    
+        protected float ambient;
+        public float AmbientStrength
         {
-            get { return color; }
-            set { color = value; }
+            get { return ambient; }
+            set { ambient = value; }
+        }
+
+        protected float diffuseStrength;
+        public float DiffuseStrength
+        {
+            get { return diffuseStrength; }
+            set { diffuseStrength = value; }
+        }
+
+        protected float specularStrength;
+        public float SpecularStrength
+        {
+            get { return specularStrength; }
+            set { specularStrength = value; }
+        }
+
+        protected float exponent;
+        public float Exponent
+        {
+            get { return exponent; }
+            set { exponent = value; }
+        }
+        
+#endregion
+
+        protected Vector4 materialColor = Vector4.Zero;
+        public Vector4 MaterialColor
+        {
+            get { return materialColor; }
+            set { materialColor = value; }
+        }
+
+        protected Vector4 specularColor = Vector4.One;
+        public Vector4 SpecularColor
+        {
+            get { return specularColor; }
+            set { specularColor = value; }
         }
 
         public abstract Vector3 Center { get; set; }

@@ -22,6 +22,14 @@ namespace RayTracerXNA
         GraphicsDeviceManager graphics;
         SpriteBatch spriteBatch;
 
+#if DEBUG
+        double fps;
+        int frameCount;
+        const double SAMPLE_TIME_FRAME = 1f;
+        double sampleTime;
+        SpriteFont font;
+#endif
+
 #if EFFECT
         private readonly VertexPositionNormalTexture[] floorVertices = {
             new VertexPositionNormalTexture(new Vector3(8, 0, 8), Vector3.Down, Vector2.Zero),
@@ -53,10 +61,15 @@ namespace RayTracerXNA
         Texture2D projection;
 #endif
 
-        readonly Vector3 lightPos = new Vector3(5f, 8f, 15f);
-
         readonly Vector3 cameraPos = new Vector3(3f, 4f, 15f);
         readonly Vector3 cameraTarget = new Vector3(3f, 0f, -70f);
+
+        #region Illumination Parameters
+
+        readonly Vector4 ambientLight = new Vector4(0.25f, 0.25f, 0.25f, 1.0f);
+        PhongModel phongModel;
+
+        #endregion
 
         public Game1()
         {
@@ -73,6 +86,15 @@ namespace RayTracerXNA
         protected override void Initialize()
         {
             // TODO: Add your initialization logic here
+            InitializeWorld();
+            InitializeLighting();
+
+            base.Initialize();
+        }
+
+        private void InitializeWorld()
+        {
+            worldMatrix = Matrix.Identity;
 #if Effect
             sphere1 = new GeodesicIcosahedron(this, 1);
             sphere2 = new GeodesicIcosahedron(this, 1);
@@ -86,15 +108,35 @@ namespace RayTracerXNA
 #else
             primitives = new List<Primitive>();
             floor = new Square(new Vector3(8, 0, 8), new Vector3(-8, 0, -16), new Vector3(8, 0, -16), new Vector3(-8, 0, -16));
+            floor.AmbientStrength = 1f;
+            floor.DiffuseStrength = 1f;
+            floor.MaterialColor = new Vector4(0f, 1f, 0f, 1f);
             primitives.Add(floor);
+
             sphere1 = new Sphere(new Vector3(3f, 4f, 11f), 1f);
+            sphere1.AmbientStrength = 1f;
+            sphere1.DiffuseStrength = 1f;
+            sphere1.MaterialColor = new Vector4(1f, 0f, 0f, 1f);
             primitives.Add(sphere1);
+
             sphere2 = new Sphere(new Vector3(1.5f, 3f, 9f), 1f);
+            sphere2.AmbientStrength = 1f;
+            sphere2.DiffuseStrength = 1f;
+            sphere2.MaterialColor = new Vector4(0f, 0f, 1f, 1f);
             primitives.Add(sphere2);
 #endif
-            worldMatrix = Matrix.Identity;
+        }
 
-            base.Initialize();
+        private void InitializeLighting()
+        {
+            phongModel = new PhongModel();
+            phongModel.AmbientLight = ambientLight;
+            
+            Light l = new Light();
+            l.LightColor = Vector4.One;
+            l.Position = new Vector3(5f, 8f, 15f);
+
+            phongModel.Lights.Add(l);
         }
 
         /// <summary>
@@ -106,14 +148,21 @@ namespace RayTracerXNA
             // Create a new SpriteBatch, which can be used to draw textures.
             spriteBatch = new SpriteBatch(GraphicsDevice);
 
-            // TODO: use this.Content to load your game content here            
-            GraphicsDevice.VertexDeclaration = new VertexDeclaration(GraphicsDevice, VertexPositionNormalTexture.VertexElements);
+            // TODO: use this.Content to load your game content here      
+            font = Content.Load<SpriteFont>(@"font");
+      
+            GraphicsDevice.VertexDeclaration = new VertexDeclaration(GraphicsDevice, VertexPositionNormalTexture.VertexElements);            
+            
+            InitializeViewProjection();
+        }
 
+        private void InitializeViewProjection()
+        {
             viewMatrix = Matrix.CreateLookAt(cameraPos, cameraTarget, Vector3.Up);
             projectionMatrix = Matrix.CreatePerspectiveFieldOfView(MathHelper.PiOver4, GraphicsDevice.Viewport.AspectRatio, nearDist, farDist);
 
 #if EFFECT
-            initEffect();
+            InitializeEffect();
 #else
             populateRayTable();
             projection = new Texture2D(GraphicsDevice, (int)WIDTH, (int)HEIGHT);
@@ -121,7 +170,7 @@ namespace RayTracerXNA
         }
 
 #if EFFECT
-        public void initEffect()
+        public void InitializeEffect()
         {
             effect = new BasicEffect(GraphicsDevice, new EffectPool());
 
@@ -137,7 +186,7 @@ namespace RayTracerXNA
             effect.View = viewMatrix;
             effect.Projection = projectionMatrix;
         }
-#else  
+#else
         private void populateRayTable()
         {
             Ray ray = new Ray(cameraPos, Vector3.Zero);
@@ -186,6 +235,16 @@ namespace RayTracerXNA
             if (theta >= MathHelper.TwoPi) 
                 theta -= MathHelper.TwoPi;
 
+#if DEBUG
+            sampleTime += gameTime.ElapsedGameTime.TotalSeconds;
+            if (sampleTime >= SAMPLE_TIME_FRAME)
+            {
+                fps = sampleTime / frameCount;
+                sampleTime = 0;
+                frameCount = 0;
+            }
+#endif
+
             base.Update(gameTime);
         }
 
@@ -204,6 +263,7 @@ namespace RayTracerXNA
 #else
             rayTracerDraw();
 #endif
+            ++frameCount;
 
             base.Draw(gameTime);
         }
@@ -295,10 +355,9 @@ namespace RayTracerXNA
                         }*/
 
                         // calculate lighting
+
                         Vector3 intersectPoint = ray.Position + Vector3.Multiply(ray.Direction, (float)dist);
-                        Vector3 lightVector = Vector3.Normalize(intersectPoint - lightPos);
-                        float diffuseLight = Vector3.Dot(lightVector, intersected.GetIntersectNormal(intersectPoint)); 
-                        colorData[index] = new Color(new Vector3(diffuseLight, diffuseLight, diffuseLight));
+                        colorData[index] = phongModel.CalculateLighting(intersected, intersectPoint);
                     }
                     else
                     {
@@ -312,6 +371,7 @@ namespace RayTracerXNA
 
             spriteBatch.Begin();
             spriteBatch.Draw(projection, Vector2.Zero, Color.White);
+            spriteBatch.DrawString(font, "FPS: " + fps, Vector2.Zero, Color.White);
             spriteBatch.End();
 
         }
