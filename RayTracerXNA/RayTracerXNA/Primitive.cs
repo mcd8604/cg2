@@ -32,8 +32,8 @@ namespace RayTracerXNA
             set { specularStrength = value; }
         }
 
-        protected float exponent;
-        public float Exponent
+        protected double exponent;
+        public double Exponent
         {
             get { return exponent; }
             set { exponent = value; }

@@ -59,6 +59,8 @@ namespace RayTracerXNA
 #else 
         Ray[,] rayTable = new Ray[(int)WIDTH, (int)HEIGHT];
         Texture2D projection;
+
+        List<Light> lights;
 #endif
 
         readonly Vector3 cameraPos = new Vector3(3f, 4f, 15f);
@@ -67,8 +69,7 @@ namespace RayTracerXNA
         #region Illumination Parameters
 
         readonly Vector4 ambientLight = new Vector4(0.25f, 0.25f, 0.25f, 1.0f);
-        PhongModel phongModel;
-
+        
         #endregion
 
         public Game1()
@@ -116,7 +117,10 @@ namespace RayTracerXNA
             sphere1 = new Sphere(new Vector3(3f, 4f, 11f), 1f);
             sphere1.AmbientStrength = 1f;
             sphere1.DiffuseStrength = 1f;
+            sphere1.SpecularStrength = 0.5f;
+            sphere1.Exponent = 4;
             sphere1.MaterialColor = new Vector4(1f, 0f, 0f, 1f);
+            sphere1.SpecularColor = Vector4.One;
             primitives.Add(sphere1);
 
             sphere2 = new Sphere(new Vector3(1.5f, 3f, 9f), 1f);
@@ -129,14 +133,18 @@ namespace RayTracerXNA
 
         private void InitializeLighting()
         {
-            phongModel = new PhongModel();
-            phongModel.AmbientLight = ambientLight;
-            
-            Light l = new Light();
-            l.LightColor = Vector4.One;
-            l.Position = new Vector3(5f, 8f, 15f);
+            lights = new List<Light>();
 
-            phongModel.Lights.Add(l);
+            Light l1 = new Light();
+            l1.LightColor = new Vector4(1f, 1f, 1f, 1f);
+            l1.Position = new Vector3(5f, 8f, 15f);
+            lights.Add(l1);
+
+            Light l2 = new Light();
+            l2.LightColor = new Vector4(1f, 1f, 1f, 1f);
+            l2.Position = new Vector3(-5f, 8f, 15f);
+            //lights.Add(l2);
+
         }
 
         /// <summary>
@@ -320,24 +328,12 @@ namespace RayTracerXNA
                 for (int x = 0; x < WIDTH; ++x)
                 {
                     Ray ray = rayTable[x, y];
-                    int index = (y * (int)WIDTH) + x;
+                    int pixelIndex = (y * (int)WIDTH) + x;
 
-                    // get closest intersection
-                    float? dist = float.PositiveInfinity;
-                    float? curDist = null;
-                    Primitive intersected = null;
+                    Vector3 intersectPoint;
+                    Primitive p = getClosestIntersection(ray, out intersectPoint);
 
-                    foreach (Primitive primitive in primitives)
-                    {
-                        curDist = primitive.Intersects(ray);
-                        if (curDist < dist)
-                        {
-                            dist = curDist;
-                            intersected = primitive;
-                        }
-                    }
-
-                    if (intersected != null)
+                    if (p != null)
                     {
                         // find polygon intersection
                         /*VertexPositionNormalTexture[] vertexData = intersected.VertexData;
@@ -353,16 +349,13 @@ namespace RayTracerXNA
                                 closestDist = polyDist; 
                             }
                         }*/
-
-                        // calculate lighting
-
-                        Vector3 intersectPoint = ray.Position + Vector3.Multiply(ray.Direction, (float)dist);
-                        colorData[index] = phongModel.CalculateLighting(intersected, intersectPoint);
+                        Vector4 totalLight = GetLighting(ref intersectPoint, p);
+                        colorData[pixelIndex] = new Color(totalLight);
                     }
                     else
                     {
                         // use background color
-                        colorData[index] = Color.CornflowerBlue;
+                        colorData[pixelIndex] = Color.CornflowerBlue;
                     }
                 }
             }
@@ -375,6 +368,116 @@ namespace RayTracerXNA
             spriteBatch.End();
 
         }
+
+        private Vector4 GetLighting(ref Vector3 intersectPoint, Primitive p)
+        {
+            Vector4 totalLight = calculateAmbient(p);
+            Vector4 diffuseTotal = Vector4.Zero;
+            Vector4 specularTotal = Vector4.Zero;
+            Vector3 intersectNormal = p.GetIntersectNormal(intersectPoint);
+
+            foreach (Light light in lights)
+            {
+                // Spawn a shadow ray from the intersection point to the light source
+                Vector3 rayDirection = Vector3.Normalize(light.Position - intersectPoint);
+
+                // but only if the intersection is facing the light source
+                float facing = Vector3.Dot(intersectNormal, rayDirection);
+                if (facing < 0)
+                {
+                    Ray shadowRay = new Ray(intersectPoint, rayDirection);
+
+                    // Check if the shadow ray reaches the light before hitting any other object
+                    float dist = Vector3.Distance(intersectPoint, light.Position);
+                    bool shadowed = false;
+
+                    foreach (Primitive primitive in primitives)
+                    {
+                        if (primitive != p)
+                        {
+                            float? curDist = primitive.Intersects(shadowRay);
+                            if (curDist != null && curDist < dist)
+                            {
+                                dist = (float)curDist;
+                                shadowed = true;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (!shadowed)
+                    {
+                        diffuseTotal += calculateDiffuse(p, intersectPoint, light);
+                        specularTotal += calculateSpecular(p, intersectPoint, light);
+                    }
+                }
+            }
+
+            totalLight +=
+                Vector4.Multiply(diffuseTotal, p.DiffuseStrength) +
+                Vector4.Multiply(specularTotal, p.SpecularStrength);
+            return totalLight;
+        }
+
+        /// <summary>
+        /// Finds the closest intersected Primitive and sets the intersection Vector3.
+        /// </summary>
+        /// <param name="ray">The ray to test Primitive intersections.</param>
+        /// <param name="intersectPoint">The Vector3 to hold the intersection data.</param>
+        /// <returns>The closest intersected Primitive, or null if no Primitive is intersected.</returns>
+        private Primitive getClosestIntersection(Ray ray, out Vector3 intersectPoint)
+        {
+            float? dist = float.PositiveInfinity;
+            float? curDist = null;
+            Primitive intersected = null;
+
+            foreach (Primitive primitive in primitives)
+            {
+                curDist = primitive.Intersects(ray);
+                if (curDist < dist)
+                {
+                    dist = curDist;
+                    intersected = primitive;
+                }
+            }
+
+            intersectPoint = ray.Position + Vector3.Multiply(ray.Direction, (float)dist);
+
+            return intersected;
+        }
+
+        private Vector4 calculateAmbient(Primitive p)
+        {
+            return p.AmbientStrength * p.MaterialColor * ambientLight;
+        }
+
+        private Vector4 calculateDiffuse(Primitive p, Vector3 intersection, Light l)
+        {
+            Vector4 diffuseColor = l.LightColor * p.MaterialColor;
+            Vector3 lightVector = Vector3.Normalize(intersection - l.Position);
+
+            float diffuseAmount = Vector3.Dot(lightVector, p.GetIntersectNormal(intersection));
+            if (diffuseAmount < 0)
+                return Vector4.Zero;
+
+            return Vector4.Multiply(diffuseColor, diffuseAmount);
+        }
+
+        private Vector4 calculateSpecular(Primitive p, Vector3 intersection, Light l)
+        {
+            Vector4 specularColor = l.LightColor * p.SpecularColor;
+
+            Vector3 lightVector = Vector3.Normalize(intersection - l.Position);
+            Vector3 normal = p.GetIntersectNormal(intersection);
+            Vector3 reflectedVector = Vector3.Reflect(lightVector, normal);
+
+            Vector3 viewVector = Vector3.Normalize(intersection - cameraPos);
+
+            float specularAmount = (float)Math.Pow((double)Vector3.Dot(reflectedVector, viewVector), p.Exponent);
+
+            return Vector4.Multiply(specularColor, specularAmount);
+        }
+
 #endif
     }
 }
