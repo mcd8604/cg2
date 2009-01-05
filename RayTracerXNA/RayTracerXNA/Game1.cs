@@ -68,7 +68,7 @@ namespace RayTracerXNA
 
         #region Illumination Parameters
 
-        readonly Vector4 ambientLight = new Vector4(0.25f, 0.25f, 0.25f, 1.0f);
+        readonly Vector4 ambientLight = new Vector4(.1f, .1f, .1f, 1f);
         
         #endregion
 
@@ -117,8 +117,8 @@ namespace RayTracerXNA
             sphere1 = new Sphere(new Vector3(3f, 4f, 11f), 1f);
             sphere1.AmbientStrength = 1f;
             sphere1.DiffuseStrength = 1f;
-            sphere1.SpecularStrength = 0.5f;
-            sphere1.Exponent = 4;
+            sphere1.SpecularStrength = 1f;
+            sphere1.Exponent = 16;
             sphere1.MaterialColor = new Vector4(1f, 0f, 0f, 1f);
             sphere1.SpecularColor = Vector4.One;
             primitives.Add(sphere1);
@@ -126,7 +126,10 @@ namespace RayTracerXNA
             sphere2 = new Sphere(new Vector3(1.5f, 3f, 9f), 1f);
             sphere2.AmbientStrength = 1f;
             sphere2.DiffuseStrength = 1f;
+            sphere2.SpecularStrength = 1f;
+            sphere2.Exponent = 16;
             sphere2.MaterialColor = new Vector4(0f, 0f, 1f, 1f);
+            sphere1.SpecularColor = Vector4.One;
             primitives.Add(sphere2);
 #endif
         }
@@ -141,10 +144,9 @@ namespace RayTracerXNA
             lights.Add(l1);
 
             Light l2 = new Light();
-            l2.LightColor = new Vector4(1f, 1f, 1f, 1f);
+            l2.LightColor = new Vector4(1, 1f, 1f, 1f);
             l2.Position = new Vector3(-5f, 8f, 15f);
             //lights.Add(l2);
-
         }
 
         /// <summary>
@@ -243,6 +245,8 @@ namespace RayTracerXNA
             if (theta >= MathHelper.TwoPi) 
                 theta -= MathHelper.TwoPi;
 
+            KeyboardState curKeyState = Keyboard.GetState();
+
 #if DEBUG
             sampleTime += gameTime.ElapsedGameTime.TotalSeconds;
             if (sampleTime >= SAMPLE_TIME_FRAME)
@@ -256,6 +260,10 @@ namespace RayTracerXNA
             base.Update(gameTime);
         }
 
+        //int count;
+        //int delta = 1;
+        //int max = 7;
+
         /// <summary>
         /// This is called when the game should draw itself.
         /// </summary>
@@ -266,6 +274,14 @@ namespace RayTracerXNA
             //GraphicsDevice.RenderState.FillMode = FillMode.WireFrame;
 
             // TODO: Add your drawing code here
+
+            //if (count > max) delta = -1;
+            //if (count < 0 - max) delta = 1;
+            //count += delta;
+
+            //Light l = lights[0];
+            //l.Position = new Vector3(5f, 8f, 15f + count);
+            //lights[0] = l;
 #if EFFECT
             effectDraw();
 #else
@@ -375,17 +391,19 @@ namespace RayTracerXNA
             Vector4 diffuseTotal = Vector4.Zero;
             Vector4 specularTotal = Vector4.Zero;
             Vector3 intersectNormal = p.GetIntersectNormal(intersectPoint);
+            //Vector3 viewVector = Vector3.Normalize(intersectPoint - cameraPos);
+            Vector3 viewVector = Vector3.Normalize(cameraPos - intersectPoint);
 
             foreach (Light light in lights)
             {
                 // Spawn a shadow ray from the intersection point to the light source
-                Vector3 rayDirection = Vector3.Normalize(light.Position - intersectPoint);
+                Vector3 lightVector = Vector3.Normalize(light.Position - intersectPoint);
 
                 // but only if the intersection is facing the light source
-                float facing = Vector3.Dot(intersectNormal, rayDirection);
+                float facing = Vector3.Dot(intersectNormal, lightVector);
                 if (facing < 0)
                 {
-                    Ray shadowRay = new Ray(intersectPoint, rayDirection);
+                    Ray shadowRay = new Ray(intersectPoint, lightVector);
 
                     // Check if the shadow ray reaches the light before hitting any other object
                     float dist = Vector3.Distance(intersectPoint, light.Position);
@@ -407,8 +425,8 @@ namespace RayTracerXNA
 
                     if (!shadowed)
                     {
-                        diffuseTotal += calculateDiffuse(p, intersectPoint, light);
-                        specularTotal += calculateSpecular(p, intersectPoint, light);
+                        diffuseTotal += calculateDiffuse(p, intersectPoint, intersectNormal, light, lightVector);
+                        specularTotal += calculateSpecular(p, intersectPoint, intersectNormal, light, lightVector, viewVector);
                     }
                 }
             }
@@ -416,6 +434,7 @@ namespace RayTracerXNA
             totalLight +=
                 Vector4.Multiply(diffuseTotal, p.DiffuseStrength) +
                 Vector4.Multiply(specularTotal, p.SpecularStrength);
+
             return totalLight;
         }
 
@@ -451,29 +470,27 @@ namespace RayTracerXNA
             return p.AmbientStrength * p.MaterialColor * ambientLight;
         }
 
-        private Vector4 calculateDiffuse(Primitive p, Vector3 intersection, Light l)
+        private Vector4 calculateDiffuse(Primitive p, Vector3 intersection, Vector3 normal, Light l, Vector3 lightVector)
         {
             Vector4 diffuseColor = l.LightColor * p.MaterialColor;
-            Vector3 lightVector = Vector3.Normalize(intersection - l.Position);
 
-            float diffuseAmount = Vector3.Dot(lightVector, p.GetIntersectNormal(intersection));
-            if (diffuseAmount < 0)
-                return Vector4.Zero;
+            float diffuseAmount = Math.Abs(Vector3.Dot(lightVector, normal));
 
             return Vector4.Multiply(diffuseColor, diffuseAmount);
         }
 
-        private Vector4 calculateSpecular(Primitive p, Vector3 intersection, Light l)
+        private Vector4 calculateSpecular(Primitive p, Vector3 intersection, Vector3 normal, Light l, Vector3 lightVector, Vector3 viewVector)
         {
             Vector4 specularColor = l.LightColor * p.SpecularColor;
 
-            Vector3 lightVector = Vector3.Normalize(intersection - l.Position);
-            Vector3 normal = p.GetIntersectNormal(intersection);
             Vector3 reflectedVector = Vector3.Reflect(lightVector, normal);
+            
+            double dot = (double)Vector3.Dot(reflectedVector, viewVector);
 
-            Vector3 viewVector = Vector3.Normalize(intersection - cameraPos);
+            if (dot >= 0)
+                return Vector4.Zero;
 
-            float specularAmount = (float)Math.Pow((double)Vector3.Dot(reflectedVector, viewVector), p.Exponent);
+            float specularAmount = (float)Math.Pow(dot, p.Exponent);
 
             return Vector4.Multiply(specularColor, specularAmount);
         }
