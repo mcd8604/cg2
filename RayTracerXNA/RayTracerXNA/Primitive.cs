@@ -8,51 +8,25 @@ namespace RayTracerXNA
 {
     abstract class Primitive
     {
-
-#region Phong parameters
-    
-        protected float ambient;
-        public float AmbientStrength
+        protected float mU;
+        public float MaxU
         {
-            get { return ambient; }
-            set { ambient = value; }
+            get { return mU; }
+            set { mU = value; }
         }
 
-        protected float diffuseStrength;
-        public float DiffuseStrength
+        protected float mV;
+        public float MaxV
         {
-            get { return diffuseStrength; }
-            set { diffuseStrength = value; }
+            get { return mV; }
+            set { mV = value; }
         }
 
-        protected float specularStrength;
-        public float SpecularStrength
+        protected Material material1;
+        public Material Material1
         {
-            get { return specularStrength; }
-            set { specularStrength = value; }
-        }
-
-        protected double exponent;
-        public double Exponent
-        {
-            get { return exponent; }
-            set { exponent = value; }
-        }
-        
-#endregion
-
-        protected Vector4 materialColor = Vector4.Zero;
-        public Vector4 MaterialColor
-        {
-            get { return materialColor; }
-            set { materialColor = value; }
-        }
-
-        protected Vector4 specularColor = Vector4.One;
-        public Vector4 SpecularColor
-        {
-            get { return specularColor; }
-            set { specularColor = value; }
+            get { return material1; }
+            set { material1 = value; }
         }
 
         public abstract Vector3 Center { get; set; }
@@ -60,6 +34,26 @@ namespace RayTracerXNA
         public abstract float? Intersects(Ray ray);
 
         public abstract Vector3 GetIntersectNormal(Vector3 intersectPoint);
+
+        public virtual Vector4 calculateAmbient(Vector4 ambientLight)
+        {
+            return material1.calculateAmbient(ambientLight);
+        }
+
+        public virtual Vector4 calculateAmbient(Vector4 ambientLight, Vector3 intersection)
+        {
+            return material1.calculateAmbient(ambientLight);
+        }
+
+        public Vector4 calculateDiffuse(Vector3 intersection, Vector3 normal, Light l, Vector3 lightVector)
+        {
+            return material1.calculateDiffuse(intersection, normal, l, lightVector);
+        }
+
+        public Vector4 calculateSpecular(Vector3 intersection, Vector3 normal, Light l, Vector3 lightVector, Vector3 viewVector)
+        {
+            return material1.calculateSpecular(intersection, normal, l, lightVector, viewVector);
+        }
 
     }
 }

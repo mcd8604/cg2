@@ -111,27 +111,38 @@ namespace RayTracerXNA
 #else
             primitives = new List<Primitive>();
             floor = new Square(new Vector3(8, 0, 8), new Vector3(-8, 0, -16), new Vector3(8, 0, -16), new Vector3(-8, 0, -16));
-            floor.AmbientStrength = 1f;
-            floor.DiffuseStrength = 1f;
-            floor.MaterialColor = new Vector4(0f, 1f, 0f, 1f);
+            Material floorMat = new MaterialCheckered();
+            floorMat.AmbientStrength = 1f;
+            floorMat.DiffuseStrength = 1f;
+            floorMat.AmbientColor = new Vector4(1f, 1f, 1f, 1f);
+            floorMat.DiffuseColor = new Vector4(0.5f, 0.5f, 0.5f, 1f);
+            floor.Material1 = floorMat;
+            floor.MaxU = 10;
+            floor.MaxV = 10;
             primitives.Add(floor);
 
             sphere1 = new Sphere(new Vector3(3f, 4f, 11f), 1f);
-            sphere1.AmbientStrength = 1f;
-            sphere1.DiffuseStrength = 1f;
-            sphere1.SpecularStrength = 1f;
-            sphere1.Exponent = 16;
-            sphere1.MaterialColor = new Vector4(1f, 0f, 0f, 1f);
-            sphere1.SpecularColor = Vector4.One;
+            Material s1Mat = new Material();
+            s1Mat.AmbientStrength = 1f;
+            s1Mat.DiffuseStrength = 1f;
+            s1Mat.SpecularStrength = 1f;
+            s1Mat.Exponent = 16;
+            s1Mat.AmbientColor = new Vector4(1f, 0f, 0f, 1f);
+            s1Mat.DiffuseColor = new Vector4(1f, 0f, 0f, 1f);
+            s1Mat.SpecularColor = Vector4.One;
+            sphere1.Material1 = s1Mat;
             primitives.Add(sphere1);
 
             sphere2 = new Sphere(new Vector3(1.5f, 3f, 9f), 1f);
-            sphere2.AmbientStrength = 1f;
-            sphere2.DiffuseStrength = 1f;
-            sphere2.SpecularStrength = 1f;
-            sphere2.Exponent = 16;
-            sphere2.MaterialColor = new Vector4(0f, 0f, 1f, 1f);
-            sphere1.SpecularColor = Vector4.One;
+            Material s2Mat = new Material();
+            s2Mat.AmbientStrength = 1f;
+            s2Mat.DiffuseStrength = 1f;
+            s2Mat.SpecularStrength = 1f;
+            s2Mat.Exponent = 16;
+            s2Mat.AmbientColor = new Vector4(0f, 0f, 1f, 1f);
+            s2Mat.DiffuseColor = new Vector4(0f, 0f, 1f, 1f);
+            s2Mat.SpecularColor = Vector4.One;
+            sphere2.Material1 = s2Mat;
             primitives.Add(sphere2);
 #endif
         }
@@ -148,7 +159,7 @@ namespace RayTracerXNA
             Light l2 = new Light();
             l2.LightColor = new Vector4(1, 1f, 1f, 1f);
             l2.Position = new Vector3(-5f, 8f, 15f);
-            lights.Add(l2);
+            //lights.Add(l2);
         }
 
         /// <summary>
@@ -389,7 +400,7 @@ namespace RayTracerXNA
 
         private Vector4 GetLighting(ref Vector3 intersectPoint, Primitive p)
         {
-            Vector4 totalLight = calculateAmbient(p);
+            Vector4 totalLight = p.calculateAmbient(ambientLight, intersectPoint);
             Vector4 diffuseTotal = Vector4.Zero;
             Vector4 specularTotal = Vector4.Zero;
             Vector3 intersectNormal = p.GetIntersectNormal(intersectPoint);
@@ -426,15 +437,15 @@ namespace RayTracerXNA
 
                     if (!shadowed)
                     {
-                        diffuseTotal += calculateDiffuse(p, intersectPoint, intersectNormal, light, lightVector);
-                        specularTotal += calculateSpecular(p, intersectPoint, intersectNormal, light, lightVector, viewVector);
+                        diffuseTotal += p.calculateDiffuse(intersectPoint, intersectNormal, light, lightVector);
+                        specularTotal += p.calculateSpecular(intersectPoint, intersectNormal, light, lightVector, viewVector);
                     }
                 }
             }
 
             totalLight +=
-                Vector4.Multiply(diffuseTotal, p.DiffuseStrength) +
-                Vector4.Multiply(specularTotal, p.SpecularStrength);
+                Vector4.Multiply(diffuseTotal, p.Material1.DiffuseStrength) +
+                Vector4.Multiply(specularTotal, p.Material1.SpecularStrength);
 
             return totalLight;
         }
@@ -464,36 +475,6 @@ namespace RayTracerXNA
             intersectPoint = ray.Position + Vector3.Multiply(ray.Direction, (float)dist);
 
             return intersected;
-        }
-
-        private Vector4 calculateAmbient(Primitive p)
-        {
-            return p.AmbientStrength * p.MaterialColor * ambientLight;
-        }
-
-        private Vector4 calculateDiffuse(Primitive p, Vector3 intersection, Vector3 normal, Light l, Vector3 lightVector)
-        {
-            Vector4 diffuseColor = l.LightColor * p.MaterialColor;
-
-            float diffuseAmount = Math.Abs(Vector3.Dot(lightVector, normal));
-
-            return Vector4.Multiply(diffuseColor, diffuseAmount);
-        }
-
-        private Vector4 calculateSpecular(Primitive p, Vector3 intersection, Vector3 normal, Light l, Vector3 lightVector, Vector3 viewVector)
-        {
-            Vector4 specularColor = l.LightColor * p.SpecularColor;
-
-            Vector3 reflectedVector = Vector3.Reflect(lightVector, normal);
-            
-            double dot = (double)Vector3.Dot(reflectedVector, viewVector);
-
-            if (dot >= 0)
-                return Vector4.Zero;
-
-            float specularAmount = (float)Math.Pow(dot, p.Exponent);
-
-            return Vector4.Multiply(specularColor, specularAmount);
         }
 
 #endif

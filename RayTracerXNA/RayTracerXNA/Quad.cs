@@ -40,6 +40,13 @@ namespace RayTracerXNA
             boundingBox = BoundingBox.CreateFromPoints(points);
         }
 
+        public override Vector4 calculateAmbient(Vector4 ambientLight, Vector3 intersection)
+        {
+            float u = (intersection.X - boundingBox.Min.X) / (boundingBox.Max.X - boundingBox.Min.X) * MaxU;
+            float v = (intersection.Z - boundingBox.Min.Z) / (boundingBox.Max.Z - boundingBox.Min.Z) * MaxV;
+            return material1.calculateAmbient(ambientLight, u, v);
+        }
+
         public override float? Intersects(Ray ray)
         {
             if (ray.Intersects(plane) != null)
