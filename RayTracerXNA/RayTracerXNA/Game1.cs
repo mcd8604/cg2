@@ -68,7 +68,7 @@ namespace RayTracerXNA
 
         #region Illumination Parameters
 
-        readonly Vector4 ambientLight = new Vector4(.1f, .1f, .1f, 1f);
+        readonly Vector4 ambientLight = new Vector4(.2f, .2f, .2f, 1f);
         
         #endregion
 
@@ -76,6 +76,8 @@ namespace RayTracerXNA
         {
             graphics = new GraphicsDeviceManager(this);
             Content.RootDirectory = "Content";
+
+            Components.Add(new ScreenCapture(this));
         }
 
         /// <summary>
@@ -146,7 +148,7 @@ namespace RayTracerXNA
             Light l2 = new Light();
             l2.LightColor = new Vector4(1, 1f, 1f, 1f);
             l2.Position = new Vector3(-5f, 8f, 15f);
-            //lights.Add(l2);
+            lights.Add(l2);
         }
 
         /// <summary>
@@ -260,9 +262,9 @@ namespace RayTracerXNA
             base.Update(gameTime);
         }
 
-        //int count;
-        //int delta = 1;
-        //int max = 7;
+        int count;
+        int delta = 1;
+        int max = 7;
 
         /// <summary>
         /// This is called when the game should draw itself.
@@ -391,7 +393,6 @@ namespace RayTracerXNA
             Vector4 diffuseTotal = Vector4.Zero;
             Vector4 specularTotal = Vector4.Zero;
             Vector3 intersectNormal = p.GetIntersectNormal(intersectPoint);
-            //Vector3 viewVector = Vector3.Normalize(intersectPoint - cameraPos);
             Vector3 viewVector = Vector3.Normalize(cameraPos - intersectPoint);
 
             foreach (Light light in lights)
