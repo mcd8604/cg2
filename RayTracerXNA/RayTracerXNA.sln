@@ -3,6 +3,8 @@ Microsoft Visual Studio Solution File, Format Version 10.00
 # Visual Studio 2008
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RayTracerXNA", "RayTracerXNA\RayTracerXNA.csproj", "{72E805F3-F1DC-4967-A827-5BC4B7098EF5}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RayTracer", "RayTracer\RayTracer.csproj", "{236E93C0-C875-43C3-9ACA-32FBFC957BF4}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x86 = Debug|x86
@@ -15,6 +17,12 @@ Global
 		{72E805F3-F1DC-4967-A827-5BC4B7098EF5}.Release|x86.Build.0 = Release|x86
 		{22D4A172-6F24-4392-8B54-ECFCB1166D39}.Debug|x86.ActiveCfg = Debug|x86
 		{22D4A172-6F24-4392-8B54-ECFCB1166D39}.Release|x86.ActiveCfg = Release|x86
+		{236E93C0-C875-43C3-9ACA-32FBFC957BF4}.Debug|x86.ActiveCfg = Debug|x86
+		{236E93C0-C875-43C3-9ACA-32FBFC957BF4}.Debug|x86.Build.0 = Debug|x86
+		{236E93C0-C875-43C3-9ACA-32FBFC957BF4}.Release|x86.ActiveCfg = Release|x86
+		{236E93C0-C875-43C3-9ACA-32FBFC957BF4}.Release|x86.Build.0 = Release|x86
+		{768FF59E-01EF-47A8-9BD8-2923FC01F88D}.Debug|x86.ActiveCfg = Debug|x86
+		{768FF59E-01EF-47A8-9BD8-2923FC01F88D}.Release|x86.ActiveCfg = Release|x86
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

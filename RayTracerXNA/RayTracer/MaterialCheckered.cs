@@ -4,9 +4,9 @@ using System.Text;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
-namespace RayTracerXNA
+namespace RayTracer
 {
-    class MaterialCheckered : Material
+    public class MaterialCheckered : Material
     {
 
         private Vector4 red = Color.Red.ToVector4();

@@ -4,9 +4,9 @@ using System.Text;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
-namespace RayTracerXNA
+namespace RayTracer
 {
-    class MaterialCircleGradient : Material
+    public class MaterialCircleGradient : Material
     {
         Vector2 center = new Vector2(0.5f, 0.5f);
 

@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.Text;
 using Microsoft.Xna.Framework;
 
-namespace RayTracerXNA
+namespace RayTracer
 {
-    class Square : Primitive
+    public class Square : Primitive
     {
         private Plane plane;
 
