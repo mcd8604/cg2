@@ -4,9 +4,9 @@ using System.Text;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
-namespace RayTracerXNA
+namespace RayTracer
 {
-    class Material
+    public class Material
     {
         #region Phong parameters
 

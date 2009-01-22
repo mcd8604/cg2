@@ -1,12 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
-using System.Drawing;
 using Microsoft.Xna.Framework;
 
-namespace RayTracerXNA
+namespace RayTracer
 {
-    abstract class Primitive
+    public abstract class Primitive
     {
         protected float mU;
         public float MaxU

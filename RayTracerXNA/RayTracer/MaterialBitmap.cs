@@ -4,9 +4,9 @@ using System.Text;
 using System.Drawing;
 using Microsoft.Xna.Framework;
 
-namespace RayTracerXNA
+namespace RayTracer
 {
-    class MaterialBitmap : Material
+    public class MaterialBitmap : Material
     {
         private Bitmap image;
 

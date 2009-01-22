@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.Text;
 using Microsoft.Xna.Framework;
 
-namespace RayTracerXNA
+namespace RayTracer
 {
-    class Sphere : Primitive
+    public class Sphere : Primitive
     {
         protected BoundingSphere boundingSphere;
         public BoundingSphere MyBoundingSphere
