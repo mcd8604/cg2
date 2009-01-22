@@ -12,20 +12,19 @@ namespace RayTracerXNA
         private Vector4 red = Color.Red.ToVector4();
         private Vector4 yellow = Color.Yellow.ToVector4();
 
-        public override Vector4 calculateAmbient(Vector4 ambientLight, float u, float v)
+        public override Vector4 getAmbientColor(float u, float v)
         {
-            //TODO
             if (u % 1 < 0.5)
             {
                 if (v % 1 < 0.5)
                 {
                     //red
-                    return ambient * ambientColor * red * ambientLight;
+                    return ambientStrength * red;
                 }
                 else
                 {
                     //yellow
-                    return ambient * ambientColor * yellow * ambientLight;
+                    return ambientStrength * yellow;
                 }
             }
             else
@@ -33,12 +32,42 @@ namespace RayTracerXNA
                 if (v % 1 < 0.5)
                 {
                     //yellow
-                    return ambient * yellow * ambientLight;
+                    return ambientStrength * yellow;
                 }
                 else
                 {
                     //red
-                    return ambient * red * ambientLight;
+                    return ambientStrength * red;
+                }
+            }
+        }
+
+        public override Vector4 getDiffuseColor(float u, float v)
+        {
+            if (u % 1 < 0.5)
+            {
+                if (v % 1 < 0.5)
+                {
+                    //red
+                    return diffuseStrength * red;
+                }
+                else
+                {
+                    //yellow
+                    return diffuseStrength * yellow;
+                }
+            }
+            else
+            {
+                if (v % 1 < 0.5)
+                {
+                    //yellow
+                    return diffuseStrength * yellow;
+                }
+                else
+                {
+                    //red
+                    return diffuseStrength * red;
                 }
             }
         }

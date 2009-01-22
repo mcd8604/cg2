@@ -35,19 +35,14 @@ namespace RayTracerXNA
 
         public abstract Vector3 GetIntersectNormal(Vector3 intersectPoint);
 
-        public virtual Vector4 calculateAmbient(Vector4 ambientLight)
-        {
-            return material1.calculateAmbient(ambientLight);
-        }
-
         public virtual Vector4 calculateAmbient(Vector4 ambientLight, Vector3 intersection)
         {
-            return material1.calculateAmbient(ambientLight);
+            return material1.calculateAmbient(ambientLight, 0, 0);
         }
 
-        public Vector4 calculateDiffuse(Vector3 intersection, Vector3 normal, Light l, Vector3 lightVector)
+        public virtual Vector4 calculateDiffuse(Vector3 intersection, Vector3 normal, Light l, Vector3 lightVector)
         {
-            return material1.calculateDiffuse(intersection, normal, l, lightVector);
+            return material1.calculateDiffuse(intersection, normal, l, lightVector, 0, 0);
         }
 
         public Vector4 calculateSpecular(Vector3 intersection, Vector3 normal, Light l, Vector3 lightVector, Vector3 viewVector)

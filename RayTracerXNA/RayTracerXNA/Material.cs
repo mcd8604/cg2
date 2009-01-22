@@ -10,11 +10,11 @@ namespace RayTracerXNA
     {
         #region Phong parameters
 
-        protected float ambient;
+        protected float ambientStrength;
         public float AmbientStrength
         {
-            get { return ambient; }
-            set { ambient = value; }
+            get { return ambientStrength; }
+            set { ambientStrength = value; }
         }
 
         protected float diffuseStrength;
@@ -41,39 +41,59 @@ namespace RayTracerXNA
         #endregion
 
         protected Vector4 ambientColor = Vector4.Zero;
-        public Vector4 AmbientColor
+
+        public virtual Vector4 getAmbientColor()
         {
-            get { return ambientColor; }
-            set { ambientColor = value; }
+            return ambientColor;
         }
 
-        protected Vector4 diffuseColor = Vector4.Zero;
-        public Vector4 DiffuseColor
+        public virtual Vector4 getAmbientColor(float u, float v)
         {
-            get { return diffuseColor; }
-            set { diffuseColor = value; }
+            return ambientColor;
         }
 
-        protected Vector4 specularColor = Vector4.One;
-        public Vector4 SpecularColor
+        public virtual void setAmbientColor(Vector4 color)
         {
-            get { return specularColor; }
-            set { specularColor = value; }
-        }
-
-        public virtual Vector4 calculateAmbient(Vector4 ambientLight)
-        {
-            return ambient * ambientColor * ambientLight;
+            ambientColor = color;
         }        
 
-        public virtual Vector4 calculateAmbient(Vector4 ambientLight, float u, float v)
+        protected Vector4 diffuseColor = Vector4.Zero;
+
+        public virtual Vector4 getDiffuseColor()
         {
-            return ambient * ambientColor * ambientLight;
+            return diffuseColor;
         }
 
-        public Vector4 calculateDiffuse(Vector3 intersection, Vector3 normal, Light l, Vector3 lightVector)
+        public virtual Vector4 getDiffuseColor(float u, float v)
         {
-            Vector4 diffuse = l.LightColor * diffuseColor;
+            return diffuseColor;
+        }
+
+        public virtual void setDiffuseColor(Vector4 color)
+        {
+            diffuseColor = color;
+        }   
+
+        protected Vector4 specularColor = Vector4.One;
+
+        public virtual Vector4 getSpecularColor()
+        {
+            return specularColor;
+        }
+
+        public virtual void setSpecularColor(Vector4 color)
+        {
+            specularColor = color;
+        } 
+
+        public Vector4 calculateAmbient(Vector4 ambientLight, float u, float v)
+        {
+            return ambientStrength * getAmbientColor(u, v) * ambientLight;
+        }
+
+        public Vector4 calculateDiffuse(Vector3 intersection, Vector3 normal, Light l, Vector3 lightVector, float u, float v)
+        {
+            Vector4 diffuse = l.LightColor * getDiffuseColor(u, v);
 
             float diffuseAmount = Math.Abs(Vector3.Dot(lightVector, normal));
 
@@ -82,7 +102,7 @@ namespace RayTracerXNA
 
         public Vector4 calculateSpecular(Vector3 intersection, Vector3 normal, Light l, Vector3 lightVector, Vector3 viewVector)
         {
-            Vector4 specular = l.LightColor * specularColor;
+            Vector4 specular = l.LightColor * getSpecularColor();
 
             Vector3 reflectedVector = Vector3.Reflect(lightVector, normal);
 
