@@ -89,7 +89,6 @@ namespace RayTracerXNA
         protected override void Initialize()
         {
             // TODO: Add your initialization logic here
-            InitializeWorld();
             InitializeLighting();
 
             base.Initialize();
@@ -111,14 +110,13 @@ namespace RayTracerXNA
 #else
             primitives = new List<Primitive>();
             floor = new Square(new Vector3(8, 0, 8), new Vector3(-8, 0, -16), new Vector3(8, 0, -16), new Vector3(-8, 0, -16));
-            Material floorMat = new MaterialCheckered();
+            //Material floorMat = new MaterialCircleGradient(.5f, Color.White.ToVector4(), Color.Green.ToVector4());
+            Material floorMat = new MaterialBitmap((System.Drawing.Bitmap)System.Drawing.Bitmap.FromFile(@"mtgcard.jpg"));
             floorMat.AmbientStrength = 1f;
             floorMat.DiffuseStrength = 1f;
-            floorMat.AmbientColor = new Vector4(1f, 1f, 1f, 1f);
-            floorMat.DiffuseColor = new Vector4(0.5f, 0.5f, 0.5f, 1f);
             floor.Material1 = floorMat;
-            floor.MaxU = 10;
-            floor.MaxV = 10;
+            floor.MaxU = 3;
+            floor.MaxV = 3;
             primitives.Add(floor);
 
             sphere1 = new Sphere(new Vector3(3f, 4f, 11f), 1f);
@@ -127,9 +125,9 @@ namespace RayTracerXNA
             s1Mat.DiffuseStrength = 1f;
             s1Mat.SpecularStrength = 1f;
             s1Mat.Exponent = 16;
-            s1Mat.AmbientColor = new Vector4(1f, 0f, 0f, 1f);
-            s1Mat.DiffuseColor = new Vector4(1f, 0f, 0f, 1f);
-            s1Mat.SpecularColor = Vector4.One;
+            s1Mat.setAmbientColor(new Vector4(1f, 0f, 0f, 1f));
+            s1Mat.setDiffuseColor(new Vector4(1f, 0f, 0f, 1f));
+            s1Mat.setSpecularColor(Vector4.One);
             sphere1.Material1 = s1Mat;
             primitives.Add(sphere1);
 
@@ -139,9 +137,9 @@ namespace RayTracerXNA
             s2Mat.DiffuseStrength = 1f;
             s2Mat.SpecularStrength = 1f;
             s2Mat.Exponent = 16;
-            s2Mat.AmbientColor = new Vector4(0f, 0f, 1f, 1f);
-            s2Mat.DiffuseColor = new Vector4(0f, 0f, 1f, 1f);
-            s2Mat.SpecularColor = Vector4.One;
+            s2Mat.setAmbientColor(new Vector4(0f, 0f, 1f, 1f));
+            s2Mat.setDiffuseColor(new Vector4(0f, 0f, 1f, 1f));
+            s2Mat.setSpecularColor(Vector4.One);
             sphere2.Material1 = s2Mat;
             primitives.Add(sphere2);
 #endif
@@ -156,9 +154,9 @@ namespace RayTracerXNA
             l1.Position = new Vector3(5f, 8f, 15f);
             lights.Add(l1);
 
-            Light l2 = new Light();
-            l2.LightColor = new Vector4(1, 1f, 1f, 1f);
-            l2.Position = new Vector3(-5f, 8f, 15f);
+            //Light l2 = new Light();
+            //l2.LightColor = new Vector4(1, 1f, 1f, 1f);
+            //l2.Position = new Vector3(-5f, 8f, 15f);
             //lights.Add(l2);
         }
 
@@ -173,6 +171,7 @@ namespace RayTracerXNA
 
             // TODO: use this.Content to load your game content here      
             font = Content.Load<SpriteFont>(@"font");
+            InitializeWorld();
       
             GraphicsDevice.VertexDeclaration = new VertexDeclaration(GraphicsDevice, VertexPositionNormalTexture.VertexElements);            
             
@@ -451,7 +450,7 @@ namespace RayTracerXNA
         }
 
         /// <summary>
-        /// Finds the closest intersected Primitive and sets the intersection Vector3.
+        /// Finds the closest intersected Primitive and sets the intersectPoint Vector3.
         /// </summary>
         /// <param name="ray">The ray to test Primitive intersections.</param>
         /// <param name="intersectPoint">The Vector3 to hold the intersection data.</param>

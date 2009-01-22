@@ -42,9 +42,22 @@ namespace RayTracerXNA
 
         public override Vector4 calculateAmbient(Vector4 ambientLight, Vector3 intersection)
         {
-            float u = (intersection.X - boundingBox.Min.X) / (boundingBox.Max.X - boundingBox.Min.X) * MaxU;
-            float v = (intersection.Z - boundingBox.Min.Z) / (boundingBox.Max.Z - boundingBox.Min.Z) * MaxV;
-            return material1.calculateAmbient(ambientLight, u, v);
+            return material1.calculateAmbient(ambientLight, getU(intersection), getV(intersection));
+        }
+
+        public override Vector4 calculateDiffuse(Vector3 intersection, Vector3 normal, Light l, Vector3 lightVector)
+        {
+            return material1.calculateDiffuse(intersection, normal, l, lightVector, getU(intersection), getV(intersection));
+        }
+
+        private float getU(Vector3 intersection)
+        {
+            return (intersection.X - boundingBox.Min.X) / (boundingBox.Max.X - boundingBox.Min.X) * MaxU;
+        }
+
+        private float getV(Vector3 intersection)
+        {
+            return (intersection.Z - boundingBox.Min.Z) / (boundingBox.Max.Z - boundingBox.Min.Z) * MaxV;
         }
 
         public override float? Intersects(Ray ray)
