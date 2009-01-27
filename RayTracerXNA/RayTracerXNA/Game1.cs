@@ -66,15 +66,15 @@ namespace RayTracerXNA
 
         private void InitializeWorld()
         {
-            floor = new Square(new Vector3(8, 0, 8), new Vector3(-8, 0, -16), new Vector3(8, 0, -16), new Vector3(-8, 0, -16));
+            floor = new Square(new Vector3(8, 0, 16), new Vector3(-8, 0, -16), new Vector3(8, 0, -16), new Vector3(-8, 0, -16));
             Material floorMat = new MaterialCheckered();
             //Material floorMat = new MaterialCircleGradient(.5f, Color.White.ToVector4(), Color.Green.ToVector4());
             //Material floorMat = new MaterialBitmap((System.Drawing.Bitmap)System.Drawing.Bitmap.FromFile(@"mtgcard.jpg"));
             floorMat.AmbientStrength = 1f;
             floorMat.DiffuseStrength = 1f;
             floor.Material1 = floorMat;
-            floor.MaxU = 10;
-            floor.MaxV = 10;
+            floor.MaxU = 2;
+            floor.MaxV = 4;
             rayTracer.WorldObjects.Add(floor);
 
             sphere1 = new Sphere(new Vector3(3f, 4f, 11f), 1f);
@@ -98,7 +98,7 @@ namespace RayTracerXNA
             s2Mat.setAmbientColor(new Vector4(0f, 0f, 1f, 1f));
             s2Mat.setDiffuseColor(new Vector4(0f, 0f, 1f, 1f));
             s2Mat.setSpecularColor(Vector4.One);
-            s2Mat.ReflectionCoef = .1f;
+            s2Mat.ReflectionCoef = .5f;
             sphere2.Material1 = s2Mat;
             rayTracer.WorldObjects.Add(sphere2);
         }
@@ -141,9 +141,12 @@ namespace RayTracerXNA
             // TODO: Unload any non ContentManager content here
         }
 
-        readonly float degree = MathHelper.ToRadians(1);
-        readonly Vector3 rotVec = Vector3.Normalize(Vector3.One);
-        float theta = 0;
+        //readonly float degree = MathHelper.ToRadians(1);
+        //readonly Vector3 rotVec = Vector3.Normalize(Vector3.One);
+        //float theta = 0;
+        ////    theta += degree;
+        ////    if (theta >= MathHelper.TwoPi) 
+        ////        theta -= MathHelper.TwoPi;
 
         /// <summary>
         /// Allows the game to run logic such as updating the world,
@@ -158,11 +161,6 @@ namespace RayTracerXNA
 
             // TODO: Add your update logic here
             MouseState mouseState = Mouse.GetState();
-            //sphere1.Rotation = Quaternion.CreateFromAxisAngle(rotVec, theta);
-            theta += degree;
-            if (theta >= MathHelper.TwoPi) 
-                theta -= MathHelper.TwoPi;
-
             KeyboardState curKeyState = Keyboard.GetState();
 
 #if DEBUG
