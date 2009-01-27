@@ -5,7 +5,7 @@ using Microsoft.Xna.Framework;
 
 namespace RayTracer
 {
-    public class Sphere : Primitive
+    public class Sphere : RayTraceable
     {
         protected BoundingSphere boundingSphere;
         public BoundingSphere MyBoundingSphere

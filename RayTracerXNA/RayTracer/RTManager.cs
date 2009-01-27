@@ -7,7 +7,7 @@ using Microsoft.Xna.Framework.Graphics;
 
 namespace RayTracer
 {
-    public class RayTracer : DrawableGameComponent
+    public class RTManager : DrawableGameComponent
     {
         private int width;
         private int height;
@@ -15,6 +15,13 @@ namespace RayTracer
         private Matrix worldMatrix;
         private Matrix viewMatrix;
         private Matrix projectionMatrix;
+
+        private int recursionDepth = 1;
+        public int RecursionDepth
+        {
+            get { return recursionDepth; }
+            set { recursionDepth = value; }
+        }
 
         private Vector3 cameraPos;
         public Vector3 CameraPosition
@@ -48,6 +55,13 @@ namespace RayTracer
 
         private Vector4 ambientLight = new Vector4(.2f, .2f, .2f, 1f);
 
+        private Vector4 backgroundColor = Color.CornflowerBlue.ToVector4();
+        public Vector4 BackgroundColor
+        {
+            get { return backgroundColor; }
+            set { backgroundColor = value; }
+        }
+
         private List<Light> lights = new List<Light>();
         public List<Light> Lights
         {
@@ -55,14 +69,14 @@ namespace RayTracer
             set { lights = value; }
         }
 
-        private List<Primitive> primitives = new List<Primitive>();
-        public List<Primitive> Primitives
+        private List<RayTraceable> worldObjects = new List<RayTraceable>();
+        public List<RayTraceable> WorldObjects
         {
-            get { return primitives; }
-            set { primitives = value; }
+            get { return worldObjects; }
+            set { worldObjects = value; }
         }
 
-        public RayTracer(Game game)
+        public RTManager(Game game)
             : base(game) { }
 
         public override void Initialize()
@@ -133,46 +147,50 @@ namespace RayTracer
                     Ray ray = rayTable[x, y];
                     int pixelIndex = (y * width) + x;
 
-                    Vector3 intersectPoint;
-                    Primitive p = getClosestIntersection(ray, out intersectPoint);
-
-                    if (p != null)
-                    {
-                        // find polygon intersection
-                        /*VertexPositionNormalTexture[] vertexData = intersected.VertexData;
-                        float? closestDist = float.PositiveInfinity;
-                        Vector3 polyNormal = Vector3.Zero;
-                        for (int i = 0; i < vertexData.Length; i += 3)
-                        {
-                            Plane p = new Plane(vertexData[i].Position, vertexData[i + 1].Position, vertexData[i + 2].Position);
-                            float? polyDist = ray.Intersects(p);
-                            if (polyDist < closestDist)
-                            {
-                                polyNormal = p.Normal;
-                                closestDist = polyDist; 
-                            }
-                        }*/
-                        Vector4 totalLight = GetLighting(ref intersectPoint, p);
-                        colorData[pixelIndex] = new Color(totalLight);
-                    }
-                    else
-                    {
-                        // use background color
-                        colorData[pixelIndex] = Color.CornflowerBlue;
-                    }
+                    colorData[pixelIndex] = new Color(Illuminate(ray));
                 }
             }
             projection = new Texture2D(GraphicsDevice, width, height);
             projection.SetData<Color>(colorData);
         }
 
-        private Vector4 GetLighting(ref Vector3 intersectPoint, Primitive p)
+        private Vector4 Illuminate(Ray ray)
         {
-            Vector4 totalLight = p.calculateAmbient(ambientLight, intersectPoint);
+            Vector3 intersectPoint;
+            RayTraceable rt = getClosestIntersection(ray, out intersectPoint);
+
+            if (rt != null)
+            {
+                Vector3 intersectNormal = rt.GetIntersectNormal(intersectPoint);
+                Vector3 viewVector = Vector3.Normalize(ray.Position - intersectPoint);
+
+                Vector4 totalLight = rt.calculateAmbient(ambientLight, intersectPoint);
+
+                totalLight += spawnShadowRay(ref intersectPoint, rt, ref intersectNormal, ref viewVector);
+
+                if (rt.Material1.ReflectionCoef > 0)
+                {
+                    Vector3 dir = Vector3.Reflect(viewVector, intersectNormal);
+                    Ray reflectionRay = new Ray(intersectPoint, dir); 
+                    totalLight += rt.Material1.ReflectionCoef * Illuminate(reflectionRay);
+                }
+                if (rt.Material1.TransmissionCoef > 0)
+                {
+                    //totalLight += p.Material1.TransmissionCoef * spawnTrannsmissionRay();
+                }
+
+                return totalLight;
+            }
+            else
+            {
+                return backgroundColor;
+            }
+        }
+
+        private Vector4 spawnShadowRay(ref Vector3 intersectPoint, RayTraceable p, ref Vector3 intersectNormal, ref Vector3 viewVector)
+        {
             Vector4 diffuseTotal = Vector4.Zero;
             Vector4 specularTotal = Vector4.Zero;
-            Vector3 intersectNormal = p.GetIntersectNormal(intersectPoint);
-            Vector3 viewVector = Vector3.Normalize(cameraPos - intersectPoint);
 
             foreach (Light light in lights)
             {
@@ -189,11 +207,11 @@ namespace RayTracer
                     float dist = Vector3.Distance(intersectPoint, light.Position);
                     bool shadowed = false;
 
-                    foreach (Primitive primitive in primitives)
+                    foreach (RayTraceable rt in worldObjects)
                     {
-                        if (primitive != p)
+                        if (rt != p)
                         {
-                            float? curDist = primitive.Intersects(shadowRay);
+                            float? curDist = rt.Intersects(shadowRay);
                             if (curDist != null && curDist < dist)
                             {
                                 dist = (float)curDist;
@@ -208,14 +226,12 @@ namespace RayTracer
                         diffuseTotal += p.calculateDiffuse(intersectPoint, intersectNormal, light, lightVector);
                         specularTotal += p.calculateSpecular(intersectPoint, intersectNormal, light, lightVector, viewVector);
                     }
+
                 }
             }
 
-            totalLight +=
-                Vector4.Multiply(diffuseTotal, p.Material1.DiffuseStrength) +
+            return Vector4.Multiply(diffuseTotal, p.Material1.DiffuseStrength) + 
                 Vector4.Multiply(specularTotal, p.Material1.SpecularStrength);
-
-            return totalLight;
         }
 
         /// <summary>
@@ -224,19 +240,19 @@ namespace RayTracer
         /// <param name="ray">The ray to test Primitive intersections.</param>
         /// <param name="intersectPoint">The Vector3 to hold the intersection data.</param>
         /// <returns>The closest intersected Primitive, or null if no Primitive is intersected.</returns>
-        private Primitive getClosestIntersection(Ray ray, out Vector3 intersectPoint)
+        private RayTraceable getClosestIntersection(Ray ray, out Vector3 intersectPoint)
         {
             float? dist = float.PositiveInfinity;
             float? curDist = null;
-            Primitive intersected = null;
+            RayTraceable intersected = null;
 
-            foreach (Primitive primitive in primitives)
+            foreach (RayTraceable rt in worldObjects)
             {
-                curDist = primitive.Intersects(ray);
-                if (curDist < dist)
+                curDist = rt.Intersects(ray);
+                if (curDist < dist && curDist > 0)
                 {
                     dist = curDist;
-                    intersected = primitive;
+                    intersected = rt;
                 }
             }
 

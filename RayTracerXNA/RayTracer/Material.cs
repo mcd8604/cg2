@@ -8,6 +8,20 @@ namespace RayTracer
 {
     public class Material
     {
+        protected float kR;
+        public float ReflectionCoef
+        {
+            get { return kR; }
+            set { kR = value; }
+        }
+
+        protected float kT;
+        public float TransmissionCoef
+        {
+            get { return kT; }
+            set { kT = value; }
+        }
+
         #region Phong parameters
 
         protected float ambientStrength;
