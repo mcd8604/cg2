@@ -27,18 +27,18 @@ namespace RayTracerXNA
         double sampleTime;
         SpriteFont font;
 #endif
-        Primitive floor;
-        Primitive sphere1;
-        Primitive sphere2;
+        RayTraceable floor;
+        RayTraceable sphere1;
+        RayTraceable sphere2;
 
-        RayTracer.RayTracer rayTracer;
+        RayTracer.RTManager rayTracer;
 
         public Game1()
         {
             graphics = new GraphicsDeviceManager(this);
             Content.RootDirectory = "Content";
 
-            rayTracer = new RayTracer.RayTracer(this);
+            rayTracer = new RayTracer.RTManager(this);
 
             rayTracer.NearPlaneDistance = 0.1f;
             rayTracer.FarPlaneDistance = 50.0f;
@@ -67,14 +67,15 @@ namespace RayTracerXNA
         private void InitializeWorld()
         {
             floor = new Square(new Vector3(8, 0, 8), new Vector3(-8, 0, -16), new Vector3(8, 0, -16), new Vector3(-8, 0, -16));
+            Material floorMat = new MaterialCheckered();
             //Material floorMat = new MaterialCircleGradient(.5f, Color.White.ToVector4(), Color.Green.ToVector4());
-            Material floorMat = new MaterialBitmap((System.Drawing.Bitmap)System.Drawing.Bitmap.FromFile(@"mtgcard.jpg"));
+            //Material floorMat = new MaterialBitmap((System.Drawing.Bitmap)System.Drawing.Bitmap.FromFile(@"mtgcard.jpg"));
             floorMat.AmbientStrength = 1f;
             floorMat.DiffuseStrength = 1f;
             floor.Material1 = floorMat;
-            floor.MaxU = 3;
-            floor.MaxV = 3;
-            rayTracer.Primitives.Add(floor);
+            floor.MaxU = 10;
+            floor.MaxV = 10;
+            rayTracer.WorldObjects.Add(floor);
 
             sphere1 = new Sphere(new Vector3(3f, 4f, 11f), 1f);
             Material s1Mat = new Material();
@@ -86,7 +87,7 @@ namespace RayTracerXNA
             s1Mat.setDiffuseColor(new Vector4(1f, 0f, 0f, 1f));
             s1Mat.setSpecularColor(Vector4.One);
             sphere1.Material1 = s1Mat;
-            rayTracer.Primitives.Add(sphere1);
+            rayTracer.WorldObjects.Add(sphere1);
 
             sphere2 = new Sphere(new Vector3(1.5f, 3f, 9f), 1f);
             Material s2Mat = new Material();
@@ -97,8 +98,9 @@ namespace RayTracerXNA
             s2Mat.setAmbientColor(new Vector4(0f, 0f, 1f, 1f));
             s2Mat.setDiffuseColor(new Vector4(0f, 0f, 1f, 1f));
             s2Mat.setSpecularColor(Vector4.One);
+            s2Mat.ReflectionCoef = .1f;
             sphere2.Material1 = s2Mat;
-            rayTracer.Primitives.Add(sphere2);
+            rayTracer.WorldObjects.Add(sphere2);
         }
 
         private void InitializeLighting()

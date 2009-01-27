@@ -89,10 +89,10 @@
     <Compile Include="MaterialBullseye.cs" />
     <Compile Include="MaterialCheckered.cs" />
     <Compile Include="MaterialCircleGradient.cs" />
-    <Compile Include="Primitive.cs" />
+    <Compile Include="RayTraceable.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Quad.cs" />
-    <Compile Include="RayTracer.cs" />
+    <Compile Include="RTManager.cs" />
     <Compile Include="Sphere.cs" />
   </ItemGroup>
   <ItemGroup>

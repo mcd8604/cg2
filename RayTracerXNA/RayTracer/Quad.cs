@@ -5,7 +5,7 @@ using Microsoft.Xna.Framework;
 
 namespace RayTracer
 {
-    public class Square : Primitive
+    public class Square : RayTraceable
     {
         private Plane plane;
 

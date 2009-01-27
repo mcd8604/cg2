@@ -5,7 +5,7 @@ using Microsoft.Xna.Framework;
 
 namespace RayTracer
 {
-    public abstract class Primitive
+    public abstract class RayTraceable
     {
         protected float mU;
         public float MaxU
