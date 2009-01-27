@@ -55,7 +55,7 @@ namespace RayTracer
 
         private Vector4 ambientLight = new Vector4(.2f, .2f, .2f, 1f);
 
-        private Vector4 backgroundColor = Color.CornflowerBlue.ToVector4();
+        private Vector4 backgroundColor = Vector4.Zero;//Color.CornflowerBlue.ToVector4();
         public Vector4 BackgroundColor
         {
             get { return backgroundColor; }
@@ -107,6 +107,11 @@ namespace RayTracer
             projection = new Texture2D(GraphicsDevice, width, height);
         }
 
+        public void UpdateCamera()
+        {
+            InitializeViewProjection();
+        }
+
         private void populateRayTable()
         {
             rayTable = new Ray[width, height];
@@ -147,14 +152,14 @@ namespace RayTracer
                     Ray ray = rayTable[x, y];
                     int pixelIndex = (y * width) + x;
 
-                    colorData[pixelIndex] = new Color(Illuminate(ray));
+                    colorData[pixelIndex] = new Color(Illuminate(ray, 0));
                 }
             }
             projection = new Texture2D(GraphicsDevice, width, height);
             projection.SetData<Color>(colorData);
         }
 
-        private Vector4 Illuminate(Ray ray)
+        private Vector4 Illuminate(Ray ray, int depth)
         {
             Vector3 intersectPoint;
             RayTraceable rt = getClosestIntersection(ray, out intersectPoint);
@@ -168,15 +173,18 @@ namespace RayTracer
 
                 totalLight += spawnShadowRay(ref intersectPoint, rt, ref intersectNormal, ref viewVector);
 
-                if (rt.Material1.ReflectionCoef > 0)
+                if (depth < recursionDepth)
                 {
-                    Vector3 dir = Vector3.Reflect(viewVector, intersectNormal);
-                    Ray reflectionRay = new Ray(intersectPoint, dir); 
-                    totalLight += rt.Material1.ReflectionCoef * Illuminate(reflectionRay);
-                }
-                if (rt.Material1.TransmissionCoef > 0)
-                {
-                    //totalLight += p.Material1.TransmissionCoef * spawnTrannsmissionRay();
+                    if (rt.Material1.ReflectionCoef > 0)
+                    {
+                        Vector3 dir = Vector3.Reflect(Vector3.Normalize(intersectPoint - ray.Position), intersectNormal);
+                        Ray reflectionRay = new Ray(intersectPoint, dir);
+                        totalLight += rt.Material1.ReflectionCoef * Illuminate(reflectionRay, ++depth);
+                    }
+                    if (rt.Material1.TransmissionCoef > 0)
+                    {
+                        //totalLight += p.Material1.TransmissionCoef * spawnTrannsmissionRay();
+                    }
                 }
 
                 return totalLight;
@@ -249,7 +257,7 @@ namespace RayTracer
             foreach (RayTraceable rt in worldObjects)
             {
                 curDist = rt.Intersects(ray);
-                if (curDist < dist && curDist > 0)
+                if (curDist < dist && curDist > 0.001f)
                 {
                     dist = curDist;
                     intersected = rt;
