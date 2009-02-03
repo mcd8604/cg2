@@ -5,7 +5,7 @@ using Microsoft.Xna.Framework;
 
 namespace RayTracer
 {
-    public class Square : RayTraceable
+    public class Quad : RayTraceable
     {
         private Plane plane;
 
@@ -28,7 +28,7 @@ namespace RayTracer
             }
         }
 
-        public Square(Vector3 pt1, Vector3 pt2, Vector3 pt3, Vector3 pt4)
+        public Quad(Vector3 pt1, Vector3 pt2, Vector3 pt3, Vector3 pt4)
         {
             plane = new Plane(pt1, pt2, pt3);
             List<Vector3> points = new List<Vector3>();

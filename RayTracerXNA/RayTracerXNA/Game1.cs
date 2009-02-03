@@ -41,10 +41,12 @@ namespace RayTracerXNA
             rayTracer = new RayTracer.RTManager(this);
 
             rayTracer.NearPlaneDistance = 0.1f;
-            rayTracer.FarPlaneDistance = 50.0f;
+            rayTracer.FarPlaneDistance = 100.0f;
 
             rayTracer.CameraPosition = new Vector3(3f, 4f, 15f);
             rayTracer.CameraTarget = new Vector3(3f, 0f, -70f);
+
+            rayTracer.RecursionDepth = 2;
 
             Components.Add(rayTracer);
             Components.Add(new ScreenCapture(this));
@@ -66,39 +68,45 @@ namespace RayTracerXNA
 
         private void InitializeWorld()
         {
-            floor = new Square(new Vector3(8, 0, 16), new Vector3(-8, 0, -16), new Vector3(8, 0, -16), new Vector3(-8, 0, -16));
+            floor = new Quad(new Vector3(8, 0, 16), new Vector3(-8, 0, -16), new Vector3(8, 0, -16), new Vector3(-8, 0, -16));
             Material floorMat = new MaterialCheckered();
             //Material floorMat = new MaterialCircleGradient(.5f, Color.White.ToVector4(), Color.Green.ToVector4());
             //Material floorMat = new MaterialBitmap((System.Drawing.Bitmap)System.Drawing.Bitmap.FromFile(@"mtgcard.jpg"));
             floorMat.AmbientStrength = 1f;
             floorMat.DiffuseStrength = 1f;
             floor.Material1 = floorMat;
-            floor.MaxU = 2;
-            floor.MaxV = 4;
+            floor.MaxU = 10;
+            floor.MaxV = 15;
             rayTracer.WorldObjects.Add(floor);
 
             sphere1 = new Sphere(new Vector3(3f, 4f, 11f), 1f);
             Material s1Mat = new Material();
-            s1Mat.AmbientStrength = 1f;
-            s1Mat.DiffuseStrength = 1f;
+            s1Mat.AmbientStrength = 0.075f;
+            s1Mat.DiffuseStrength = 0.075f;
             s1Mat.SpecularStrength = 1f;
-            s1Mat.Exponent = 16;
-            s1Mat.setAmbientColor(new Vector4(1f, 0f, 0f, 1f));
-            s1Mat.setDiffuseColor(new Vector4(1f, 0f, 0f, 1f));
+            //s1Mat.AmbientStrength = 1f;
+            //s1Mat.DiffuseStrength = 1f;
+            //s1Mat.SpecularStrength = 1f;
+            s1Mat.Exponent = 20;
+            s1Mat.setAmbientColor(new Vector4(1f, 1f, 1f, 1f));
+            s1Mat.setDiffuseColor(new Vector4(1f, 1f, 1f, 1f));
             s1Mat.setSpecularColor(Vector4.One);
+            s1Mat.TransmissionCoef = .85f;
             sphere1.Material1 = s1Mat;
             rayTracer.WorldObjects.Add(sphere1);
 
             sphere2 = new Sphere(new Vector3(1.5f, 3f, 9f), 1f);
             Material s2Mat = new Material();
-            s2Mat.AmbientStrength = 1f;
-            s2Mat.DiffuseStrength = 1f;
+            s2Mat.AmbientStrength = 0.15f;
+            s2Mat.DiffuseStrength = 0.25f;
+            //s2Mat.AmbientStrength = 1f;
+            //s2Mat.DiffuseStrength = 1f;
             s2Mat.SpecularStrength = 1f;
-            s2Mat.Exponent = 16;
-            s2Mat.setAmbientColor(new Vector4(0f, 0f, 1f, 1f));
-            s2Mat.setDiffuseColor(new Vector4(0f, 0f, 1f, 1f));
+            s2Mat.Exponent = 20;
+            s2Mat.setAmbientColor(new Vector4(0.7f, 0.7f, 0.7f, 1f));
+            s2Mat.setDiffuseColor(new Vector4(0.7f, 0.7f, 0.7f, 1f));
             s2Mat.setSpecularColor(Vector4.One);
-            s2Mat.ReflectionCoef = .5f;
+            s2Mat.ReflectionCoef = .75f;
             sphere2.Material1 = s2Mat;
             rayTracer.WorldObjects.Add(sphere2);
         }
