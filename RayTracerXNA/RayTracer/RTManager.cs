@@ -54,6 +54,11 @@ namespace RayTracer
         private SpriteBatch spriteBatch;
 
         private Vector4 ambientLight = new Vector4(.2f, .2f, .2f, 1f);
+        public Vector4 AmbientLight
+        {
+            get { return ambientLight; }
+            set { ambientLight = value; }
+        }
 
         private Vector4 backgroundColor = Vector4.Zero;//Color.CornflowerBlue.ToVector4();
         public Vector4 BackgroundColor
@@ -175,15 +180,41 @@ namespace RayTracer
 
                 if (depth < recursionDepth)
                 {
+                    Vector3 incidentRay = Vector3.Normalize(intersectPoint - ray.Position);
                     if (rt.Material1.ReflectionCoef > 0)
                     {
-                        Vector3 dir = Vector3.Reflect(Vector3.Normalize(intersectPoint - ray.Position), intersectNormal);
+                        Vector3 dir = Vector3.Reflect(incidentRay, intersectNormal);
                         Ray reflectionRay = new Ray(intersectPoint, dir);
                         totalLight += rt.Material1.ReflectionCoef * Illuminate(reflectionRay, ++depth);
                     }
                     if (rt.Material1.TransmissionCoef > 0)
                     {
-                        //totalLight += p.Material1.TransmissionCoef * spawnTrannsmissionRay();
+                        // arccos((n2/n1)sin(thetaI)) 
+                        //double thetaT = Math.Acos(rt.Material1.TransmissionCoef * Vector3.Dot(incidentRay, intersectNormal));
+
+                        float n;
+                        
+                        if (depth % 2 == 0)
+                        {
+                            // assuming outside to inside
+                            n = rt.Material1.TransmissionCoef;
+                        }
+                        else
+                        {
+                            // assuming inside to outside
+                            n = 1 / rt.Material1.TransmissionCoef;
+                        }
+
+                        float dot = Vector3.Dot(incidentRay, intersectNormal);
+                        float sqrt = (float)Math.Sqrt( 1 + ( (n * n) * ((dot * dot) - 1)));
+
+                        Vector3 dir = (n * incidentRay) + ((n * dot - sqrt) * intersectNormal);                           
+
+                        //Vector3 dir = Vector3.SmoothStep(incidentRay, intersectNormal, rt.Material1.TransmissionCoef);
+                        
+                        Ray transRay = new Ray(intersectPoint, dir);
+                        
+                        totalLight += rt.Material1.TransmissionCoef * Illuminate(transRay, ++depth);
                     }
                 }
 
@@ -257,7 +288,7 @@ namespace RayTracer
             foreach (RayTraceable rt in worldObjects)
             {
                 curDist = rt.Intersects(ray);
-                if (curDist < dist && curDist > 0.001f)
+                if (curDist < dist)
                 {
                     dist = curDist;
                     intersected = rt;
