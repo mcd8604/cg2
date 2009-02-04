@@ -46,7 +46,9 @@ namespace RayTracerXNA
             rayTracer.CameraPosition = new Vector3(3f, 4f, 15f);
             rayTracer.CameraTarget = new Vector3(3f, 0f, -70f);
 
-            rayTracer.RecursionDepth = 2;
+            rayTracer.RecursionDepth = 5;
+
+            rayTracer.BackgroundColor = Color.CornflowerBlue.ToVector4();
 
             Components.Add(rayTracer);
             Components.Add(new ScreenCapture(this));
@@ -80,34 +82,36 @@ namespace RayTracerXNA
             rayTracer.WorldObjects.Add(floor);
 
             sphere1 = new Sphere(new Vector3(3f, 4f, 11f), 1f);
-            Material s1Mat = new Material();
-            s1Mat.AmbientStrength = 0.075f;
-            s1Mat.DiffuseStrength = 0.075f;
-            s1Mat.SpecularStrength = 1f;
+            Material glass = new Material();
+            glass.AmbientStrength = 0.075f;
+            glass.DiffuseStrength = 0.075f;
+            glass.SpecularStrength = 0.2f;
             //s1Mat.AmbientStrength = 1f;
             //s1Mat.DiffuseStrength = 1f;
             //s1Mat.SpecularStrength = 1f;
-            s1Mat.Exponent = 20;
-            s1Mat.setAmbientColor(new Vector4(1f, 1f, 1f, 1f));
-            s1Mat.setDiffuseColor(new Vector4(1f, 1f, 1f, 1f));
-            s1Mat.setSpecularColor(Vector4.One);
-            s1Mat.TransmissionCoef = .85f;
-            sphere1.Material1 = s1Mat;
+            glass.Exponent = 20;
+            glass.setAmbientColor(new Vector4(1f, 1f, 1f, 1f));
+            glass.setDiffuseColor(new Vector4(1f, 1f, 1f, 1f));
+            glass.setSpecularColor(Vector4.One);
+            glass.ReflectionCoef = .01f;
+            glass.Transparency = .95f;
+            glass.RefractionIndex = .99f;
+            sphere1.Material1 = glass;
             rayTracer.WorldObjects.Add(sphere1);
 
             sphere2 = new Sphere(new Vector3(1.5f, 3f, 9f), 1f);
-            Material s2Mat = new Material();
-            s2Mat.AmbientStrength = 0.15f;
-            s2Mat.DiffuseStrength = 0.25f;
+            Material mirror = new Material();
+            mirror.AmbientStrength = 0.15f;
+            mirror.DiffuseStrength = 0.25f;
             //s2Mat.AmbientStrength = 1f;
             //s2Mat.DiffuseStrength = 1f;
-            s2Mat.SpecularStrength = 1f;
-            s2Mat.Exponent = 20;
-            s2Mat.setAmbientColor(new Vector4(0.7f, 0.7f, 0.7f, 1f));
-            s2Mat.setDiffuseColor(new Vector4(0.7f, 0.7f, 0.7f, 1f));
-            s2Mat.setSpecularColor(Vector4.One);
-            s2Mat.ReflectionCoef = .75f;
-            sphere2.Material1 = s2Mat;
+            mirror.SpecularStrength = 1f;
+            mirror.Exponent = 20;
+            mirror.setAmbientColor(new Vector4(0.7f, 0.7f, 0.7f, 1f));
+            mirror.setDiffuseColor(new Vector4(0.7f, 0.7f, 0.7f, 1f));
+            mirror.setSpecularColor(Vector4.One);
+            mirror.ReflectionCoef = .75f;
+            sphere2.Material1 = mirror;
             rayTracer.WorldObjects.Add(sphere2);
         }
 
@@ -156,6 +160,8 @@ namespace RayTracerXNA
         ////    if (theta >= MathHelper.TwoPi) 
         ////        theta -= MathHelper.TwoPi;
 
+        KeyboardState lastKeyState = Keyboard.GetState();
+
         /// <summary>
         /// Allows the game to run logic such as updating the world,
         /// checking for collisions, gathering input, and playing audio.
@@ -171,15 +177,13 @@ namespace RayTracerXNA
             MouseState mouseState = Mouse.GetState();
             KeyboardState curKeyState = Keyboard.GetState();
 
-#if DEBUG
-            sampleTime += gameTime.ElapsedGameTime.TotalSeconds;
-            if (sampleTime >= SAMPLE_TIME_FRAME)
+            if (lastKeyState.IsKeyUp(Keys.W) && curKeyState.IsKeyDown(Keys.W))
             {
-                fps = sampleTime / frameCount;
-                sampleTime = 0;
-                frameCount = 0;
+                sphere1.Center = new Vector3(sphere1.Center.X, sphere1.Center.Y, sphere1.Center.Z - 1);
+                sphere2.Center = new Vector3(sphere2.Center.X, sphere2.Center.Y, sphere2.Center.Z - 1);
             }
-#endif
+
+            lastKeyState = curKeyState;
 
             base.Update(gameTime);
         }
@@ -190,10 +194,20 @@ namespace RayTracerXNA
         /// <param name="gameTime">Provides a snapshot of timing values.</param>
         protected override void Draw(GameTime gameTime)
         {
-            graphics.GraphicsDevice.Clear(Color.CornflowerBlue);
+            graphics.GraphicsDevice.Clear(new Color(rayTracer.BackgroundColor));
 
             rayTracer.Draw(gameTime);
 
+
+#if DEBUG
+            sampleTime += gameTime.ElapsedGameTime.TotalSeconds;
+            if (sampleTime >= SAMPLE_TIME_FRAME)
+            {
+                fps = sampleTime / frameCount;
+                sampleTime = 0;
+                frameCount = 0;
+            }
+#endif
             spriteBatch.Begin();
             spriteBatch.DrawString(font, "FPS: " + fps, Vector2.Zero, Color.White);
             spriteBatch.End();

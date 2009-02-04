@@ -167,6 +167,7 @@ namespace RayTracer
             if (rayVal != dist1)
             { }
 
+
             return (float)dist1;
         }
 
