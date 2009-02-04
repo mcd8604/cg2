@@ -16,10 +16,17 @@ namespace RayTracer
         }
 
         protected float kT;
-        public float TransmissionCoef
+        public float Transparency
         {
             get { return kT; }
             set { kT = value; }
+        }
+
+        protected float n;
+        public float RefractionIndex
+        {
+            get { return n; }
+            set { n = value; }
         }
 
         #region Phong parameters
