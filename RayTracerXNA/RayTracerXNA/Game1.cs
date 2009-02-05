@@ -10,6 +10,10 @@ using Microsoft.Xna.Framework.Net;
 using Microsoft.Xna.Framework.Storage;
 using RayTracer;
 
+#if DEBUG
+using System.Diagnostics;
+#endif
+
 namespace RayTracerXNA
 {
     /// <summary>
@@ -26,6 +30,9 @@ namespace RayTracerXNA
         const double SAMPLE_TIME_FRAME = 1f;
         double sampleTime;
         SpriteFont font;
+
+        double rayTime;
+        Stopwatch sw = new Stopwatch();
 #endif
         RayTraceable floor;
         RayTraceable sphere1;
@@ -188,6 +195,8 @@ namespace RayTracerXNA
             base.Update(gameTime);
         }
 
+
+
         /// <summary>
         /// This is called when the game should draw itself.
         /// </summary>
@@ -196,25 +205,35 @@ namespace RayTracerXNA
         {
             graphics.GraphicsDevice.Clear(new Color(rayTracer.BackgroundColor));
 
+#if DEBUG
+            sw.Reset();
+            sw.Start();
+#endif
             rayTracer.Draw(gameTime);
+#if DEBUG
+            sw.Stop();
+#endif
 
 
 #if DEBUG
-            sampleTime += gameTime.ElapsedGameTime.TotalSeconds;
-            if (sampleTime >= SAMPLE_TIME_FRAME)
-            {
-                fps = sampleTime / frameCount;
-                sampleTime = 0;
-                frameCount = 0;
-            }
+            //sampleTime += gameTime.ElapsedGameTime.TotalSeconds;
+            //if (sampleTime >= SAMPLE_TIME_FRAME)
+            //{
+            //    fps = sampleTime / frameCount;
+            //    sampleTime = 0;
+            //    frameCount = 0;
+            //}
+
+            rayTime = sw.Elapsed.TotalSeconds;
 #endif
-            spriteBatch.Begin();
-            spriteBatch.DrawString(font, "FPS: " + fps, Vector2.Zero, Color.White);
-            spriteBatch.End();
 
             ++frameCount;
 
             base.Draw(gameTime);
+
+            spriteBatch.Begin();
+            spriteBatch.DrawString(font, "Raytrace time: " + rayTime, Vector2.Zero, Color.White);
+            spriteBatch.End();
         }
     }
 }
