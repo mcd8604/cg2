@@ -101,7 +101,7 @@ namespace RayTracerXNA
             glass.setDiffuseColor(new Vector4(1f, 1f, 1f, 1f));
             glass.setSpecularColor(Vector4.One);
             glass.ReflectionCoef = .01f;
-            glass.Transparency = .95f;
+            glass.Transparency = .99f;
             glass.RefractionIndex = .99f;
             sphere1.Material1 = glass;
             rayTracer.WorldObjects.Add(sphere1);

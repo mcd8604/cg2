@@ -268,35 +268,40 @@ namespace RayTracer
                             if (curDist != null && curDist < dist)
                             {
                                 dist = (float)curDist;
+
                                 shadowed = true;
-                                break;
 
                                 // Checkpoint 6 extra - transmit shadow rays
 
-                                ////shadowed = true;
-                                ////break;
+                                if (rt.Material1.Transparency > 0)
+                                {
+                                    Vector3 incidentVector = Vector3.Normalize(intersectPoint - shadowRay.Position);
+                                    Vector3 shadowIntersect = shadowRay.Position + (shadowRay.Direction * (float)curDist);
+                                    Vector3 shadowNormal = rt.GetIntersectNormal(shadowIntersect);
 
-                                //if (rt.Material1.Transparency > 0)
-                                //{
-                                //    Vector3 incidentVector = Vector3.Normalize(intersectPoint - shadowRay.Position);
-                                //    Vector3 shadowIntersect = shadowRay.Position + (shadowRay.Direction * (float)curDist);
-                                //    Vector3 shadowNormal = rt.GetIntersectNormal(shadowIntersect);
-
-                                //    spawnTransmissionRay(depth, ref shadowIntersect, rt, ref shadowNormal, ref shadowLight, ref incidentVector);
-                                //}
-                                //else
-                                //{
-                                //    shadowed = true;
-                                //    break;
-                                //}
+                                    spawnTransmissionRay(depth, ref shadowIntersect, rt, ref shadowNormal, ref shadowLight, ref incidentVector);
+                                    shadowLight *= rt.Material1.Transparency;
+                                }
+                                else
+                                {
+                                    shadowLight = Vector4.Zero;
+                                    break;
+                                }
+                                //break;
                             }
                         }
                     }
 
-                    if (!shadowed)
+
+                    if (shadowed)
                     {
-                        diffuseTotal += p.calculateDiffuse(intersectPoint, intersectNormal, light, lightVector) * (Vector4.One -  shadowLight);
-                        specularTotal += p.calculateSpecular(intersectPoint, intersectNormal, light, lightVector, viewVector) * (Vector4.One - shadowLight);
+                        diffuseTotal += p.calculateDiffuse(intersectPoint, intersectNormal, light, lightVector) * shadowLight;
+                        specularTotal += p.calculateSpecular(intersectPoint, intersectNormal, light, lightVector, viewVector) * shadowLight;
+                    }
+                    else
+                    {
+                        diffuseTotal += p.calculateDiffuse(intersectPoint, intersectNormal, light, lightVector);
+                        specularTotal += p.calculateSpecular(intersectPoint, intersectNormal, light, lightVector, viewVector);
                     }
 
                 }
