@@ -67,7 +67,7 @@ namespace RayTracer
             set { backgroundColor = value; }
         }
 
-        private float lMax = 10f;
+        private float lMax = 1000f;
         public float LMax
         {
             get { return lMax; }
@@ -229,6 +229,9 @@ namespace RayTracer
 
                 // reflected luminance
                 colorData[i] /= (Vector4.One + colorData[i]);
+
+                // simulate illumination
+                colorData[i] *= lDMax;
             }
         }
 
