@@ -67,7 +67,7 @@ namespace RayTracer
             set { backgroundColor = value; }
         }
 
-        private float lMax = 100f;
+        private float lMax = 10f;
         public float LMax
         {
             get { return lMax; }
@@ -202,17 +202,15 @@ namespace RayTracer
 
             for (int i = 0; i < colorData.Length; ++i)
             {
-                absLuminance[i] = (0.27f * colorData[i].X) + (0.67f * colorData[i].Y) + (0.07f * colorData[i].Z);
-
-                //for (int i = 0; i < colorData.Length; ++i)
                 colorData[i] *= lMax;
+                absLuminance[i] = (0.27f * colorData[i].X) + (0.67f * colorData[i].Y) + (0.06f * colorData[i].Z);
             }
 
             // log-avg luminance            
             double logAvg = getLogAvgLuminance(absLuminance);
 
-            //WardOp(colorData, logAvg);
-            ReinhardOp(colorData, (float)logAvg);
+            WardOp(colorData, logAvg);
+            //ReinhardOp(colorData, (float)logAvg);
 
             // apply device model
             for (int i = 0; i < colorData.Length; ++i)
@@ -237,7 +235,7 @@ namespace RayTracer
         private void WardOp(Vector4[] colorData, double logAvg)
         {
             // scale factor
-            float sf = (float)Math.Pow(numerator / (1.219 + logAvg), 2.5);
+            float sf = (float)(Math.Pow(numerator / (1.219 + Math.Pow(logAvg, 0.4)), 2.5));
 
             for (int i = 0; i < colorData.Length; ++i)
                 colorData[i] *= sf;
@@ -363,21 +361,21 @@ namespace RayTracer
 
                                 // Checkpoint 6 extra - transmit shadow rays
 
-                                if (rt.Material1.Transparency > 0)
-                                {
-                                    Vector3 incidentVector = Vector3.Normalize(intersectPoint - shadowRay.Position);
-                                    Vector3 shadowIntersect = shadowRay.Position + (shadowRay.Direction * (float)curDist);
-                                    Vector3 shadowNormal = rt.GetIntersectNormal(shadowIntersect);
+                                //if (rt.Material1.Transparency > 0)
+                                //{
+                                //    Vector3 incidentVector = Vector3.Normalize(intersectPoint - shadowRay.Position);
+                                //    Vector3 shadowIntersect = shadowRay.Position + (shadowRay.Direction * (float)curDist);
+                                //    Vector3 shadowNormal = rt.GetIntersectNormal(shadowIntersect);
 
-                                    spawnTransmissionRay(depth, ref shadowIntersect, rt, ref shadowNormal, ref shadowLight, ref incidentVector);
-                                    shadowLight *= rt.Material1.Transparency;
-                                }
-                                else
-                                {
-                                    shadowLight = Vector4.Zero;
-                                    break;
-                                }
-                                //break;
+                                //    spawnTransmissionRay(depth, ref shadowIntersect, rt, ref shadowNormal, ref shadowLight, ref incidentVector);
+                                //    shadowLight *= rt.Material1.Transparency;
+                                //}
+                                //else
+                                //{
+                                //    shadowLight = Vector4.Zero;
+                                //    break;
+                                //}
+                                break;
                             }
                         }
                     }
