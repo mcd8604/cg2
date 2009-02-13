@@ -60,12 +60,35 @@ namespace RayTracer
             set { ambientLight = value; }
         }
 
-        private Vector4 backgroundColor = Vector4.Zero;//Color.CornflowerBlue.ToVector4();
+        private Vector4 backgroundColor = Vector4.Zero;
         public Vector4 BackgroundColor
         {
             get { return backgroundColor; }
             set { backgroundColor = value; }
         }
+
+        private float lMax = 100f;
+        public float LMax
+        {
+            get { return lMax; }
+            set { lMax = value; }
+        }
+
+        private float lDMax = 100f;
+        public float LDMax
+        {
+            get { return lDMax; }
+            set 
+            { 
+                lDMax = value;
+                numerator = 1.219 + Math.Pow(lDMax / 2, 0.4);
+            }
+        }
+
+        /// <summary>
+        /// Used in scale factor for tone reproduction
+        /// </summary>
+        private static double numerator = 1.219 + Math.Pow(50, 0.4);
 
         private List<Light> lights = new List<Light>();
         public List<Light> Lights
@@ -148,7 +171,7 @@ namespace RayTracer
 
         private void trace()
         {
-            Color[] colorData = new Color[width * height];
+            Vector4[] colorData = new Vector4[width * height];
 
             for (int y = 0; y < height; ++y)
             {
@@ -157,11 +180,81 @@ namespace RayTracer
                     Ray ray = rayTable[x, y];
                     int pixelIndex = (y * width) + x;
 
-                    colorData[pixelIndex] = new Color(Illuminate(ray, 0));
+                    colorData[pixelIndex] = Illuminate(ray, 0);
                 }
             }
+
+            //applyWardToneReproduction(colorData);
+            applyReinhardToneReproduction(colorData);
+
+            // colorData.Cast<Color>().ToArray<Color>();
+            Color[] colors = new Color[colorData.Length];
+            int i = 0;
+            foreach (Vector4 v in colorData)
+                colors[i++] = new Color(v);
             projection = new Texture2D(GraphicsDevice, width, height);
-            projection.SetData<Color>(colorData);
+            projection.SetData<Color>(colors);
+        }
+
+        // Luminance Zone 5
+        private const float a = 0.18f;
+
+        private void applyReinhardToneReproduction(Vector4[] colorData)
+        {
+            // calculate luminance
+            float[] absLuminance = new float[colorData.Length];
+
+            for (int i = 0; i < colorData.Length; ++i)
+                absLuminance[i] = (0.27f * colorData[i].X) + (0.67f * colorData[i].Y) + (0.07f * colorData[i].Z);
+
+            // log-avg luminance 
+            float logAvg = (float)getLogAvgLuminance(absLuminance);
+
+            for (int i = 0; i < colorData.Length; ++i)
+            {
+                // scaled luminance
+                colorData[i] *= (a / logAvg);
+
+                // target = reflected luminance * ldmax
+                colorData[i] /= (Vector4.One + colorData[i]) * lDMax;
+            }
+        }
+
+        private void applyWardToneReproduction(Vector4[] colorData)
+        {
+            // calculate luminance
+            float[] absLuminance = new float[colorData.Length];
+            
+            for (int i = 0; i < colorData.Length; ++i)
+            {
+                colorData[i] *= lMax;
+                absLuminance[i] = (0.27f * colorData[i].X) + (0.67f * colorData[i].Y) + (0.07f * colorData[i].Z);
+            }
+
+            // Ward model tone reproduction
+
+            // log-avg luminance            
+            double logAvg = getLogAvgLuminance(absLuminance);
+
+            // scale factor
+            double sf = Math.Pow(numerator / (1.219 + logAvg), 2.5);
+
+            float scaledLuminance = (float)(sf / lDMax);
+
+            // apply device model
+            for (int i = 0; i < colorData.Length; ++i)
+                colorData[i] *= scaledLuminance;
+        }
+
+        private static double getLogAvgLuminance(float[] absLuminance)
+        {
+            double E = 0f;
+
+            foreach (float L in absLuminance)
+                E += Math.Log(0.00000001 + L);
+
+            double logAvg = Math.Exp(E / absLuminance.Length);
+            return logAvg;
         }
 
         private Vector4 Illuminate(Ray ray, int depth)
