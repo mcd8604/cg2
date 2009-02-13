@@ -184,8 +184,7 @@ namespace RayTracer
                 }
             }
 
-            //applyWardToneReproduction(colorData);
-            applyReinhardToneReproduction(colorData);
+            applyToneReproduction(colorData);
 
             // colorData.Cast<Color>().ToArray<Color>();
             Color[] colors = new Color[colorData.Length];
@@ -196,54 +195,52 @@ namespace RayTracer
             projection.SetData<Color>(colors);
         }
 
-        // Luminance Zone 5
-        private const float a = 0.18f;
-
-        private void applyReinhardToneReproduction(Vector4[] colorData)
+        private void applyToneReproduction(Vector4[] colorData)
         {
             // calculate luminance
             float[] absLuminance = new float[colorData.Length];
 
             for (int i = 0; i < colorData.Length; ++i)
+            {
                 absLuminance[i] = (0.27f * colorData[i].X) + (0.67f * colorData[i].Y) + (0.07f * colorData[i].Z);
 
-            // log-avg luminance 
-            float logAvg = (float)getLogAvgLuminance(absLuminance);
+                //for (int i = 0; i < colorData.Length; ++i)
+                colorData[i] *= lMax;
+            }
 
+            // log-avg luminance            
+            double logAvg = getLogAvgLuminance(absLuminance);
+
+            //WardOp(colorData, logAvg);
+            ReinhardOp(colorData, (float)logAvg);
+
+            // apply device model
+            for (int i = 0; i < colorData.Length; ++i)
+                colorData[i] /= lDMax;
+        }
+
+        // Luminance Zone 5
+        private const float a = 0.18f;
+
+        private void ReinhardOp(Vector4[] colorData, float logAvg)
+        {
             for (int i = 0; i < colorData.Length; ++i)
             {
                 // scaled luminance
                 colorData[i] *= (a / logAvg);
 
-                // target = reflected luminance * ldmax
-                colorData[i] /= (Vector4.One + colorData[i]) * lDMax;
+                // reflected luminance
+                colorData[i] /= (Vector4.One + colorData[i]);
             }
         }
 
-        private void applyWardToneReproduction(Vector4[] colorData)
+        private void WardOp(Vector4[] colorData, double logAvg)
         {
-            // calculate luminance
-            float[] absLuminance = new float[colorData.Length];
-            
-            for (int i = 0; i < colorData.Length; ++i)
-            {
-                colorData[i] *= lMax;
-                absLuminance[i] = (0.27f * colorData[i].X) + (0.67f * colorData[i].Y) + (0.07f * colorData[i].Z);
-            }
-
-            // Ward model tone reproduction
-
-            // log-avg luminance            
-            double logAvg = getLogAvgLuminance(absLuminance);
-
             // scale factor
-            double sf = Math.Pow(numerator / (1.219 + logAvg), 2.5);
+            float sf = (float)Math.Pow(numerator / (1.219 + logAvg), 2.5);
 
-            float scaledLuminance = (float)(sf / lDMax);
-
-            // apply device model
             for (int i = 0; i < colorData.Length; ++i)
-                colorData[i] *= scaledLuminance;
+                colorData[i] *= sf;
         }
 
         private static double getLogAvgLuminance(float[] absLuminance)
