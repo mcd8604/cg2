@@ -7,16 +7,29 @@ using Microsoft.Xna.Framework.Graphics;
 
 namespace RayTracer
 {
+    /// <summary>
+    /// Manages the process of ray tracing.
+    /// </summary>
     public class RTManager : DrawableGameComponent
     {
+        /// <summary>
+        /// Width of the projected scene.
+        /// </summary>
         private int width;
+        /// <summary>
+        /// Height of the projected scene.
+        /// </summary>
         private int height;
 
-        private Matrix worldMatrix;
+        // Matrices
+        private Matrix worldMatrix = Matrix.Identity;
         private Matrix viewMatrix;
         private Matrix projectionMatrix;
 
         private int recursionDepth = 1;
+        /// <summary>
+        /// The recursion depth of the ray tracer.
+        /// </summary>
         public int RecursionDepth
         {
             get { return recursionDepth; }
@@ -24,12 +37,20 @@ namespace RayTracer
         }
 
         private Vector3 cameraPos;
+        /// <summary>
+        /// The current camera position.
+        /// </summary>
+        /// <remarks>Call UpdateCamera() after setting this value post-instansiation.</remarks>
         public Vector3 CameraPosition
         {
             get { return cameraPos; }
             set { cameraPos = value; }
         }
         private Vector3 cameraTarget;
+        /// <summary>
+        /// The current camera target.
+        /// </summary>
+        /// <remarks>Call UpdateCamera() after setting this value post-instansiation.</remarks>
         public Vector3 CameraTarget
         {
             get { return cameraTarget; }
@@ -37,12 +58,18 @@ namespace RayTracer
         }
 
         private float nearDist;
+        /// <summary>
+        /// The near plane distance of the projection matrix.
+        /// </summary>
         public float NearPlaneDistance
         {
             get { return nearDist; }
             set { nearDist = value; }
         }
         private float farDist;
+        /// <summary>
+        /// The far plane distance of the projection matrix.
+        /// </summary>
         public float FarPlaneDistance
         {
             get { return farDist; }
@@ -54,6 +81,9 @@ namespace RayTracer
         private SpriteBatch spriteBatch;
 
         private Vector4 ambientLight = new Vector4(.2f, .2f, .2f, 1f);
+        /// <summary>
+        /// The color of ambient light in the world (R, G, B, A).
+        /// </summary>
         public Vector4 AmbientLight
         {
             get { return ambientLight; }
@@ -61,13 +91,19 @@ namespace RayTracer
         }
 
         private Vector4 backgroundColor = Vector4.Zero;
+        /// <summary>
+        /// The background color of the world (R, G, B, A).
+        /// </summary>
         public Vector4 BackgroundColor
         {
             get { return backgroundColor; }
             set { backgroundColor = value; }
         }
 
-        private float lMax = 1000f;
+        private float lMax = 100f;
+        /// <summary>
+        /// The max luminance value of the scene. Default is 100.
+        /// </summary>
         public float LMax
         {
             get { return lMax; }
@@ -75,6 +111,9 @@ namespace RayTracer
         }
 
         private float lDMax = 100f;
+        /// <summary>
+        /// The max luminance value of the display device. Default is 100.
+        /// </summary>
         public float LDMax
         {
             get { return lDMax; }
@@ -91,6 +130,9 @@ namespace RayTracer
         private static double numerator = 1.219 + Math.Pow(50, 0.4);
 
         private List<Light> lights = new List<Light>();
+        /// <summary>
+        /// The list of point lights in the world.
+        /// </summary>
         public List<Light> Lights
         {
             get { return lights; }
@@ -98,21 +140,21 @@ namespace RayTracer
         }
 
         private List<RayTraceable> worldObjects = new List<RayTraceable>();
+        /// <summary>
+        /// The list of ray traceable objects in the world.
+        /// </summary>
         public List<RayTraceable> WorldObjects
         {
             get { return worldObjects; }
             set { worldObjects = value; }
         }
 
+        /// <summary>
+        /// Creates a new RTManager.
+        /// </summary>
+        /// <param name="game"></param>
         public RTManager(Game game)
             : base(game) { }
-
-        public override void Initialize()
-        {
-            worldMatrix = Matrix.Identity;
-        
-            base.Initialize();
-        }
 
         protected override void LoadContent()
         {
@@ -135,11 +177,17 @@ namespace RayTracer
             projection = new Texture2D(GraphicsDevice, width, height);
         }
 
+        /// <summary>
+        /// Updates view and projection matrices.
+        /// </summary>
         public void UpdateCamera()
         {
             InitializeViewProjection();
         }
 
+        /// <summary>
+        /// Creates a two dimensional array of projection rays - one per pixel.
+        /// </summary>
         private void populateRayTable()
         {
             rayTable = new Ray[width, height];
@@ -158,6 +206,10 @@ namespace RayTracer
             }
         }
 
+        /// <summary>
+        /// Performs ray tracing, rasterizes and draws a projection texture.
+        /// </summary>
+        /// <param name="gameTime"></param>
         public override void Draw(GameTime gameTime)
         {
             trace();
@@ -169,6 +221,9 @@ namespace RayTracer
             base.Draw(gameTime);
         }
 
+        /// <summary>
+        /// Traces each ray into the world, applies tone reproduction, then creates a projection texture.
+        /// </summary>
         private void trace()
         {
             Vector4[] colorData = new Vector4[width * height];
@@ -186,7 +241,6 @@ namespace RayTracer
 
             applyToneReproduction(colorData);
 
-            // colorData.Cast<Color>().ToArray<Color>();
             Color[] colors = new Color[colorData.Length];
             int i = 0;
             foreach (Vector4 v in colorData)
