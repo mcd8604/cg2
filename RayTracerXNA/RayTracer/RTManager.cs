@@ -202,19 +202,25 @@ namespace RayTracer
 
             for (int i = 0; i < colorData.Length; ++i)
             {
-                colorData[i] *= lMax;
+                colorData[i].X *= lMax;
+                colorData[i].Y *= lMax;
+                colorData[i].Z *= lMax;
                 absLuminance[i] = (0.27f * colorData[i].X) + (0.67f * colorData[i].Y) + (0.06f * colorData[i].Z);
             }
 
             // log-avg luminance            
             double logAvg = getLogAvgLuminance(absLuminance);
 
-            WardOp(colorData, logAvg);
-            //ReinhardOp(colorData, (float)logAvg);
+            //WardOp(colorData, logAvg);
+            ReinhardOp(colorData, (float)logAvg);
 
             // apply device model
             for (int i = 0; i < colorData.Length; ++i)
-                colorData[i] /= lDMax;
+            {
+                colorData[i].X /= lDMax;
+                colorData[i].Y /= lDMax;
+                colorData[i].Z /= lDMax;
+            }
         }
 
         // Luminance Zone 5
@@ -225,13 +231,19 @@ namespace RayTracer
             for (int i = 0; i < colorData.Length; ++i)
             {
                 // scaled luminance
-                colorData[i] *= (a / logAvg);
+                colorData[i].X *= (a / logAvg);
+                colorData[i].Y *= (a / logAvg);
+                colorData[i].Z *= (a / logAvg);
 
                 // reflected luminance
-                colorData[i] /= (Vector4.One + colorData[i]);
+                colorData[i].X /= (1 + colorData[i].X);
+                colorData[i].Y /= (1 + colorData[i].Y);
+                colorData[i].Z /= (1 + colorData[i].Z);
 
                 // simulate illumination
-                colorData[i] *= lDMax;
+                colorData[i].X *= lDMax;
+                colorData[i].Y *= lDMax;
+                colorData[i].Z *= lDMax;
             }
         }
 
@@ -241,7 +253,11 @@ namespace RayTracer
             float sf = (float)(Math.Pow(numerator / (1.219 + Math.Pow(logAvg, 0.4)), 2.5));
 
             for (int i = 0; i < colorData.Length; ++i)
-                colorData[i] *= sf;
+            {
+                colorData[i].X *= sf;
+                colorData[i].Y *= sf;
+                colorData[i].Z *= sf;
+            }
         }
 
         private static double getLogAvgLuminance(float[] absLuminance)
