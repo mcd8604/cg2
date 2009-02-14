@@ -45,6 +45,13 @@ namespace RayTracerXNA
             graphics = new GraphicsDeviceManager(this);
             Content.RootDirectory = "Content";
 
+            InitializeRayTracer();
+            
+            Components.Add(new ScreenCapture(this));
+        }
+
+        private void InitializeRayTracer()
+        {
             rayTracer = new RayTracer.RTManager(this);
 
             rayTracer.NearPlaneDistance = 0.1f;
@@ -58,7 +65,6 @@ namespace RayTracerXNA
             rayTracer.BackgroundColor = Color.CornflowerBlue.ToVector4();
 
             Components.Add(rayTracer);
-            Components.Add(new ScreenCapture(this));
         }
 
         /// <summary>
@@ -93,9 +99,6 @@ namespace RayTracerXNA
             glass.AmbientStrength = 0.075f;
             glass.DiffuseStrength = 0.075f;
             glass.SpecularStrength = 0.2f;
-            //s1Mat.AmbientStrength = 1f;
-            //s1Mat.DiffuseStrength = 1f;
-            //s1Mat.SpecularStrength = 1f;
             glass.Exponent = 20;
             glass.setAmbientColor(new Vector4(1f, 1f, 1f, 1f));
             glass.setDiffuseColor(new Vector4(1f, 1f, 1f, 1f));
@@ -110,8 +113,6 @@ namespace RayTracerXNA
             Material mirror = new Material();
             mirror.AmbientStrength = 0.15f;
             mirror.DiffuseStrength = 0.25f;
-            //s2Mat.AmbientStrength = 1f;
-            //s2Mat.DiffuseStrength = 1f;
             mirror.SpecularStrength = 1f;
             mirror.Exponent = 20;
             mirror.setAmbientColor(new Vector4(0.7f, 0.7f, 0.7f, 1f));
