@@ -1,4 +1,9 @@
-﻿using System;
+﻿
+// Checkpoint 6 extra - transmit shadow rays
+// Flag - continue shadow rays through transparent materials
+#undef TRANSMIT_SHADOW
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -7,6 +12,16 @@ using Microsoft.Xna.Framework.Graphics;
 
 namespace RayTracer
 {
+    /// <summary>
+    /// Tone Reproduction Operators
+    /// </summary>
+    public enum TROp
+    {
+        None,
+        Ward,
+        Reinhard
+    }
+
     /// <summary>
     /// Manages the process of ray tracing.
     /// </summary>
@@ -124,6 +139,17 @@ namespace RayTracer
             }
         }
 
+        private TROp trOp = TROp.None;
+        /// <summary>
+        /// Tone reproduction operator to apply.
+        /// </summary>
+        /// <remarks>Tone reproduction is not applied if TROp.None is set.</remarks>
+        public TROp ToneReproductionOperator
+        {
+            get { return trOp; }
+            set { trOp = value; }
+        }
+
         /// <summary>
         /// Used in scale factor for tone reproduction
         /// </summary>
@@ -239,7 +265,8 @@ namespace RayTracer
                 }
             }
 
-            applyToneReproduction(colorData);
+            if(trOp != TROp.None) 
+                applyToneReproduction(colorData);
 
             Color[] colors = new Color[colorData.Length];
             int i = 0;
@@ -265,8 +292,10 @@ namespace RayTracer
             // log-avg luminance            
             double logAvg = getLogAvgLuminance(absLuminance);
 
-            //WardOp(colorData, logAvg);
-            ReinhardOp(colorData, (float)logAvg);
+            if(trOp == TROp.Ward)
+                WardOp(colorData, logAvg);
+            else if(trOp == TROp.Reinhard)
+                ReinhardOp(colorData, (float)logAvg);
 
             // apply device model
             for (int i = 0; i < colorData.Length; ++i)
@@ -280,6 +309,11 @@ namespace RayTracer
         // Luminance Zone 5
         private const float a = 0.18f;
 
+        /// <summary>
+        /// Applies Reinhard tone reproduction operator
+        /// </summary>
+        /// <param name="colorData"></param>
+        /// <param name="logAvg"></param>
         private void ReinhardOp(Vector4[] colorData, float logAvg)
         {
             for (int i = 0; i < colorData.Length; ++i)
@@ -301,6 +335,11 @@ namespace RayTracer
             }
         }
 
+        /// <summary>
+        /// Applies Ward tone reproduction operator
+        /// </summary>
+        /// <param name="colorData"></param>
+        /// <param name="logAvg"></param>
         private void WardOp(Vector4[] colorData, double logAvg)
         {
             // scale factor
@@ -314,6 +353,11 @@ namespace RayTracer
             }
         }
 
+        /// <summary>
+        /// Gets the log average luminance for an array of absolute luminances
+        /// </summary>
+        /// <param name="absLuminance">array of absolute luminances</param>
+        /// <returns></returns>
         private static double getLogAvgLuminance(float[] absLuminance)
         {
             double E = 0f;
@@ -325,6 +369,12 @@ namespace RayTracer
             return logAvg;
         }
 
+        /// <summary>
+        /// Calculates the illumination (un)projected to a ray in the world.
+        /// </summary>
+        /// <param name="ray">The ray to calculate illumination.</param>
+        /// <param name="depth">Current recursion depth</param>
+        /// <returns></returns>
         private Vector4 Illuminate(Ray ray, int depth)
         {
             Vector3 intersectPoint;
@@ -342,12 +392,16 @@ namespace RayTracer
                 if (depth < recursionDepth)
                 {
                     Vector3 incidentVector = Vector3.Normalize(intersectPoint - ray.Position);
-                    if (rt.Material1.ReflectionCoef > 0)
+                    
+                    // Material is reflective
+                    if (rt.Material1.Reflectivity > 0)
                     {
                         Vector3 dir = Vector3.Reflect(incidentVector, intersectNormal);
                         Ray reflectionRay = new Ray(intersectPoint, dir);
-                        totalLight += rt.Material1.ReflectionCoef * Illuminate(reflectionRay, depth + 1);
+                        totalLight += rt.Material1.Reflectivity * Illuminate(reflectionRay, depth + 1);
                     }
+
+                    // Material is transparent
                     if (rt.Material1.Transparency > 0)
                     {
                         spawnTransmissionRay(depth, ref intersectPoint, rt, ref intersectNormal, ref totalLight, ref incidentVector);
@@ -362,19 +416,30 @@ namespace RayTracer
             }
         }
 
-        private void spawnTransmissionRay(int depth, ref Vector3 intersectPoint, RayTraceable rt, ref Vector3 intersectNormal, ref Vector4 totalLight, ref Vector3 incidentVector)
+        /// <summary>
+        /// Spawns a recursive, transmitted (refracted) ray.
+        /// </summary>
+        /// <param name="depth">Current recursion depth</param>
+        /// <param name="intersectPoint">Origin of the ray</param>
+        /// <param name="intersectedObject">World object that was intersected</param>
+        /// <param name="intersectNormal">Normal of the world object at the intersection point</param>
+        /// <param name="totalLight">Total light to contribute to.</param>
+        /// <param name="incidentVector">Ray direction incident to intersection.</param>
+        private void spawnTransmissionRay(int depth, ref Vector3 intersectPoint, RayTraceable intersectedObject, ref Vector3 intersectNormal, ref Vector4 totalLight, ref Vector3 incidentVector)
         {
             float n;
+
+            // Parity check
 
             if (depth % 2 == 0)
             {
                 // assuming outside to inside
-                n = rt.Material1.RefractionIndex;
+                n = intersectedObject.Material1.RefractionIndex;
             }
             else
             {
                 // assuming inside to outside
-                n = 1 / rt.Material1.RefractionIndex;
+                n = 1 / intersectedObject.Material1.RefractionIndex;
                 intersectNormal = Vector3.Negate(intersectNormal);
             }
 
@@ -383,23 +448,30 @@ namespace RayTracer
 
             if (discriminant < 0)
             {
+                // simulate total internal reflection
                 Vector3 dir = Vector3.Reflect(incidentVector, intersectNormal);
                 Ray reflectionRay = new Ray(intersectPoint, dir);
-                totalLight += rt.Material1.RefractionIndex * Illuminate(reflectionRay, depth + 1);
+                totalLight += intersectedObject.Material1.RefractionIndex * Illuminate(reflectionRay, depth + 1);
             }
             else
             {
                 float sqrt = (float)Math.Sqrt(discriminant);
-
                 Vector3 dir = (n * incidentVector) + ((n * dot - sqrt) * intersectNormal);
-
                 Ray transRay = new Ray(intersectPoint, dir);
-
-                totalLight += rt.Material1.Transparency * Illuminate(transRay, depth + 1);
+                totalLight += intersectedObject.Material1.Transparency * Illuminate(transRay, depth + 1);
             }
         }
 
-        private Vector4 spawnShadowRay(ref Vector3 intersectPoint, RayTraceable p, ref Vector3 intersectNormal, ref Vector3 viewVector, int depth)
+        /// <summary>
+        /// Spawns a shadow ray.
+        /// </summary>
+        /// <param name="intersectPoint">Origin of the ray</param>
+        /// <param name="intersectedObject">World object that was intersected</param>
+        /// <param name="intersectNormal">Normal of the world object at the intersection point</param>
+        /// <param name="viewVector">Camera view vector.</param>
+        /// <param name="depth">current recursion depth.</param>
+        /// <returns></returns>
+        private Vector4 spawnShadowRay(ref Vector3 intersectPoint, RayTraceable intersectedObject, ref Vector3 intersectNormal, ref Vector3 viewVector, int depth)
         {
             Vector4 diffuseTotal = Vector4.Zero;
             Vector4 specularTotal = Vector4.Zero;
@@ -423,61 +495,60 @@ namespace RayTracer
 
                     foreach (RayTraceable rt in worldObjects)
                     {
-                        if (rt != p)
+                        if (rt != intersectedObject)
                         {
                             float? curDist = rt.Intersects(shadowRay);
                             if (curDist != null && curDist < dist)
                             {
                                 dist = (float)curDist;
-
                                 shadowed = true;
 
-                                // Checkpoint 6 extra - transmit shadow rays
-
-                                //if (rt.Material1.Transparency > 0)
-                                //{
-                                //    Vector3 incidentVector = Vector3.Normalize(intersectPoint - shadowRay.Position);
-                                //    Vector3 shadowIntersect = shadowRay.Position + (shadowRay.Direction * (float)curDist);
-                                //    Vector3 shadowNormal = rt.GetIntersectNormal(shadowIntersect);
-
-                                //    spawnTransmissionRay(depth, ref shadowIntersect, rt, ref shadowNormal, ref shadowLight, ref incidentVector);
-                                //    shadowLight *= rt.Material1.Transparency;
-                                //}
-                                //else
-                                //{
-                                //    shadowLight = Vector4.Zero;
-                                //    break;
-                                //}
+#if !TRANSMIT_SHADOW
                                 break;
+#else
+                                if (rt.Material1.Transparency > 0)
+                                {
+                                    Vector3 incidentVector = Vector3.Normalize(intersectPoint - shadowRay.Position);
+                                    Vector3 shadowIntersect = shadowRay.Position + (shadowRay.Direction * (float)curDist);
+                                    Vector3 shadowNormal = rt.GetIntersectNormal(shadowIntersect);
+
+                                    spawnTransmissionRay(depth, ref shadowIntersect, rt, ref shadowNormal, ref shadowLight, ref incidentVector);
+                                    shadowLight *= rt.Material1.Transparency;
+                                }
+                                else
+                                {
+                                    shadowLight = Vector4.Zero;
+                                    break;
+                                }
+#endif
                             }
                         }
                     }
 
-
                     if (shadowed)
                     {
-                        diffuseTotal += p.calculateDiffuse(intersectPoint, intersectNormal, light, lightVector) * shadowLight;
-                        specularTotal += p.calculateSpecular(intersectPoint, intersectNormal, light, lightVector, viewVector) * shadowLight;
+                        diffuseTotal += intersectedObject.calculateDiffuse(intersectPoint, intersectNormal, light, lightVector) * shadowLight;
+                        specularTotal += intersectedObject.calculateSpecular(intersectPoint, intersectNormal, light, lightVector, viewVector) * shadowLight;
                     }
                     else
                     {
-                        diffuseTotal += p.calculateDiffuse(intersectPoint, intersectNormal, light, lightVector);
-                        specularTotal += p.calculateSpecular(intersectPoint, intersectNormal, light, lightVector, viewVector);
+                        diffuseTotal += intersectedObject.calculateDiffuse(intersectPoint, intersectNormal, light, lightVector);
+                        specularTotal += intersectedObject.calculateSpecular(intersectPoint, intersectNormal, light, lightVector, viewVector);
                     }
 
                 }
             }
 
-            return Vector4.Multiply(diffuseTotal, p.Material1.DiffuseStrength) + 
-                Vector4.Multiply(specularTotal, p.Material1.SpecularStrength);
+            return Vector4.Multiply(diffuseTotal, intersectedObject.Material1.DiffuseStrength) + 
+                Vector4.Multiply(specularTotal, intersectedObject.Material1.SpecularStrength);
         }
 
         /// <summary>
-        /// Finds the closest intersected Primitive and sets the intersectPoint Vector3.
+        /// Finds the closest intersected RayTraceable and sets the intersectPoint Vector3.
         /// </summary>
-        /// <param name="ray">The ray to test Primitive intersections.</param>
+        /// <param name="ray">The ray to test RayTraceable intersections.</param>
         /// <param name="intersectPoint">The Vector3 to hold the intersection data.</param>
-        /// <returns>The closest intersected Primitive, or null if no Primitive is intersected.</returns>
+        /// <returns>The closest intersected RayTraceable, or null if no RayTraceable is intersected.</returns>
         private RayTraceable getClosestIntersection(Ray ray, out Vector3 intersectPoint)
         {
             float? dist = float.PositiveInfinity;

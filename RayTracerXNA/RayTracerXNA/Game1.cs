@@ -1,3 +1,5 @@
+#undef USE_SECOND_LIGHT
+
 using System;
 using System.Collections.Generic;
 using Microsoft.Xna.Framework;
@@ -25,20 +27,17 @@ namespace RayTracerXNA
         SpriteBatch spriteBatch;
 
 #if DEBUG
-        double fps;
-        int frameCount;
-        const double SAMPLE_TIME_FRAME = 1f;
-        double sampleTime;
-        SpriteFont font;
-
-        double rayTime;
-        Stopwatch sw = new Stopwatch();
+        // Diagnostics
+        private SpriteFont font;
+        private double rayTime;
+        private Stopwatch sw = new Stopwatch();
 #endif
-        RayTraceable floor;
-        RayTraceable sphere1;
-        RayTraceable sphere2;
 
-        RayTracer.RTManager rayTracer;
+        // Ray tracer
+        private RTManager rayTracer;
+
+        // Clear color
+        private readonly Color bgColor = Color.CornflowerBlue;
 
         public Game1()
         {
@@ -62,7 +61,7 @@ namespace RayTracerXNA
 
             rayTracer.RecursionDepth = 5;
 
-            rayTracer.BackgroundColor = Color.CornflowerBlue.ToVector4();
+            rayTracer.BackgroundColor = bgColor.ToVector4();
 
             Components.Add(rayTracer);
         }
@@ -81,9 +80,12 @@ namespace RayTracerXNA
             base.Initialize();
         }
 
+        /// <summary>
+        /// Adds objects to world
+        /// </summary>
         private void InitializeWorld()
         {
-            floor = new Quad(new Vector3(8, 0, 16), new Vector3(-8, 0, -16), new Vector3(8, 0, -16), new Vector3(-8, 0, -16));
+            RayTraceable floor = new Quad(new Vector3(8, 0, 16), new Vector3(-8, 0, -16), new Vector3(8, 0, -16), new Vector3(-8, 0, -16));
             Material floorMat = new MaterialCheckered();
             //Material floorMat = new MaterialCircleGradient(.5f, Color.White.ToVector4(), Color.Green.ToVector4());
             //Material floorMat = new MaterialBitmap((System.Drawing.Bitmap)System.Drawing.Bitmap.FromFile(@"mtgcard.jpg"));
@@ -94,7 +96,7 @@ namespace RayTracerXNA
             floor.MaxV = 15;
             rayTracer.WorldObjects.Add(floor);
 
-            sphere1 = new Sphere(new Vector3(3f, 4f, 11f), 1f);
+            RayTraceable sphere1 = new Sphere(new Vector3(3f, 4f, 11f), 1f);
             Material glass = new Material();
             glass.AmbientStrength = 0.075f;
             glass.DiffuseStrength = 0.075f;
@@ -103,13 +105,13 @@ namespace RayTracerXNA
             glass.setAmbientColor(new Vector4(1f, 1f, 1f, 1f));
             glass.setDiffuseColor(new Vector4(1f, 1f, 1f, 1f));
             glass.setSpecularColor(Vector4.One);
-            glass.ReflectionCoef = .01f;
+            glass.Reflectivity = .01f;
             glass.Transparency = .99f;
             glass.RefractionIndex = .99f;
             sphere1.Material1 = glass;
             rayTracer.WorldObjects.Add(sphere1);
 
-            sphere2 = new Sphere(new Vector3(1.5f, 3f, 9f), 1f);
+            RayTraceable sphere2 = new Sphere(new Vector3(1.5f, 3f, 9f), 1f);
             Material mirror = new Material();
             mirror.AmbientStrength = 0.15f;
             mirror.DiffuseStrength = 0.25f;
@@ -118,11 +120,14 @@ namespace RayTracerXNA
             mirror.setAmbientColor(new Vector4(0.7f, 0.7f, 0.7f, 1f));
             mirror.setDiffuseColor(new Vector4(0.7f, 0.7f, 0.7f, 1f));
             mirror.setSpecularColor(Vector4.One);
-            mirror.ReflectionCoef = .75f;
+            mirror.Reflectivity = .75f;
             sphere2.Material1 = mirror;
             rayTracer.WorldObjects.Add(sphere2);
         }
 
+        /// <summary>
+        /// Adds light source(s) to world.
+        /// </summary>
         private void InitializeLighting()
         {
             Light l1 = new Light();
@@ -130,10 +135,12 @@ namespace RayTracerXNA
             l1.Position = new Vector3(5f, 8f, 15f);
             rayTracer.Lights.Add(l1);
 
-            //Light l2 = new Light();
-            //l2.LightColor = new Vector4(1, 1f, 1f, 1f);
-            //l2.Position = new Vector3(-5f, 8f, 15f);
-            //rayTracer.Lights.Add(l2);
+#if USE_SECOND_LIGHT
+            Light l2 = new Light();
+            l2.LightColor = new Vector4(1, 1f, 1f, 1f);
+            l2.Position = new Vector3(-5f, 8f, 15f);
+            rayTracer.Lights.Add(l2);
+#endif
         }
 
         /// <summary>
@@ -146,7 +153,9 @@ namespace RayTracerXNA
             spriteBatch = new SpriteBatch(GraphicsDevice);
 
             // TODO: use this.Content to load your game content here      
+#if DEBUG
             font = Content.Load<SpriteFont>(@"font");
+#endif
             InitializeWorld();
       
             GraphicsDevice.VertexDeclaration = new VertexDeclaration(GraphicsDevice, VertexPositionNormalTexture.VertexElements);
@@ -161,15 +170,6 @@ namespace RayTracerXNA
             // TODO: Unload any non ContentManager content here
         }
 
-        //readonly float degree = MathHelper.ToRadians(1);
-        //readonly Vector3 rotVec = Vector3.Normalize(Vector3.One);
-        //float theta = 0;
-        ////    theta += degree;
-        ////    if (theta >= MathHelper.TwoPi) 
-        ////        theta -= MathHelper.TwoPi;
-
-        KeyboardState lastKeyState = Keyboard.GetState();
-
         /// <summary>
         /// Allows the game to run logic such as updating the world,
         /// checking for collisions, gathering input, and playing audio.
@@ -182,21 +182,9 @@ namespace RayTracerXNA
                 this.Exit();
 
             // TODO: Add your update logic here
-            MouseState mouseState = Mouse.GetState();
-            KeyboardState curKeyState = Keyboard.GetState();
-
-            if (lastKeyState.IsKeyUp(Keys.W) && curKeyState.IsKeyDown(Keys.W))
-            {
-                sphere1.Center = new Vector3(sphere1.Center.X, sphere1.Center.Y, sphere1.Center.Z - 1);
-                sphere2.Center = new Vector3(sphere2.Center.X, sphere2.Center.Y, sphere2.Center.Z - 1);
-            }
-
-            lastKeyState = curKeyState;
 
             base.Update(gameTime);
         }
-
-
 
         /// <summary>
         /// This is called when the game should draw itself.
@@ -204,7 +192,7 @@ namespace RayTracerXNA
         /// <param name="gameTime">Provides a snapshot of timing values.</param>
         protected override void Draw(GameTime gameTime)
         {
-            graphics.GraphicsDevice.Clear(new Color(rayTracer.BackgroundColor));
+            graphics.GraphicsDevice.Clear(bgColor);
 
 #if DEBUG
             sw.Reset();
@@ -215,26 +203,15 @@ namespace RayTracerXNA
             sw.Stop();
 #endif
 
+            base.Draw(gameTime);
 
 #if DEBUG
-            //sampleTime += gameTime.ElapsedGameTime.TotalSeconds;
-            //if (sampleTime >= SAMPLE_TIME_FRAME)
-            //{
-            //    fps = sampleTime / frameCount;
-            //    sampleTime = 0;
-            //    frameCount = 0;
-            //}
-
             rayTime = sw.Elapsed.TotalSeconds;
-#endif
-
-            ++frameCount;
-
-            base.Draw(gameTime);
 
             spriteBatch.Begin();
             spriteBatch.DrawString(font, "Raytrace time: " + rayTime, Vector2.Zero, Color.White);
             spriteBatch.End();
+#endif
         }
     }
 }
