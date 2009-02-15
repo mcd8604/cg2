@@ -8,6 +8,9 @@ using System.IO;
 
 namespace RayTracerXNA
 {
+    /// <summary>
+    /// Writes an image of the back buffer to file when Keys.PrintScreen is pressed.
+    /// </summary>
     class ScreenCapture : DrawableGameComponent
     {
         private ResolveTexture2D resolveTarget;
