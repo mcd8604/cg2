@@ -8,9 +8,9 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyTitle("RayTracerXNA")]
 [assembly: AssemblyProduct("RayTracerXNA")]
 [assembly: AssemblyDescription("")]
-[assembly: AssemblyCompany("Decision Lens")]
+[assembly: AssemblyCompany("")]
 
-[assembly: AssemblyCopyright("Copyright © Decision Lens 2008")]
+[assembly: AssemblyCopyright("Copyright © Mike DeMauro 2009")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
