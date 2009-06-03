@@ -1,0 +1,22 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 10.00
+# Visual Studio 2008
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BilliardsSimulation", "BilliardsSimulation\BilliardsSimulation.csproj", "{CF43D6FD-967B-40A3-843E-55FB7B59E96A}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x86 = Debug|x86
+		Release|x86 = Release|x86
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{CF43D6FD-967B-40A3-843E-55FB7B59E96A}.Debug|x86.ActiveCfg = Debug|x86
+		{CF43D6FD-967B-40A3-843E-55FB7B59E96A}.Debug|x86.Build.0 = Debug|x86
+		{CF43D6FD-967B-40A3-843E-55FB7B59E96A}.Release|x86.ActiveCfg = Release|x86
+		{CF43D6FD-967B-40A3-843E-55FB7B59E96A}.Release|x86.Build.0 = Release|x86
+		{394166E8-EFD2-47D9-8745-FCC2DBD0B394}.Debug|x86.ActiveCfg = Debug|x86
+		{394166E8-EFD2-47D9-8745-FCC2DBD0B394}.Release|x86.ActiveCfg = Release|x86
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
