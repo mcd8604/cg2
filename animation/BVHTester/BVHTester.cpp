@@ -395,7 +395,7 @@ HRESULT InitDevice()
     D3DXMatrixIdentity( &g_World2 );
 
     // Initialize the view matrix
-    D3DXVECTOR3 Eye( 200.0f, 10.0f, 200.0f );
+    D3DXVECTOR3 Eye( 500.0f, 10.0f, 500.0f );
     D3DXVECTOR3 At( 0.0f, 0.0f, 0.0f );
     D3DXVECTOR3 Up( 0.0f, 1.0f, 0.0f );
     D3DXMatrixLookAtLH( &g_View, &Eye, &At, &Up );
@@ -618,8 +618,8 @@ HRESULT InitNodeFrames(Node * node, int * dataIndex, vector<float> data)
 	if(children.size() > 0)
 	{
 		KeyFrame keyFrame;
-		keyFrame.rotation = getNodeRotation(node, dataIndex, data);
 		keyFrame.translation = getNodeTranslation(node, dataIndex, data);
+		keyFrame.rotation = getNodeRotation(node, dataIndex, data);
 		node->AddKeyFrame(keyFrame);
 			
 		for(int i = 0; i < children.size(); i++)
@@ -825,6 +825,18 @@ void Render()
 		RenderNode(g_nodes[i], g_World1);
 	}
 
+	//
+	// Update view matrix - point at first root node
+	//
+	D3DXVECTOR3 Eye( 500.0f, 10.0f, 500.0f );
+	KeyFrame keyFrame = g_nodes[0]->GetKeyFrame(g_curFrame);	
+	D3DXVECTOR3 At, scale;
+	D3DXQUATERNION rot;
+	if(FAILED(D3DXMatrixDecompose(&scale, &rot, &At, &keyFrame.translation)))
+		return;
+	D3DXVECTOR3 Up( 0.0f, 1.0f, 0.0f );
+	D3DXMatrixLookAtLH( &g_View, &Eye, &At, &Up );
+
     //
     // Update variables for the first cube
     //
@@ -880,12 +892,12 @@ void RenderNode(Node * node, D3DXMATRIX world)
 		//D3DXMatrixMultiply( &mOffset, &mOffset, &world);
 		//D3DXMatrixMultiply( &world, &mOffset, &keyFrame.translation );	
 		//D3DXMatrixMultiply( &world, &keyFrame.rotation, &world );	
-		world = keyFrame.rotation * keyFrame.translation * world;
+		world = keyFrame.rotation * (mOffset * keyFrame.translation) * world;
 	} else {
 		//D3DXMatrixMultiply( &world, &mOffset, &world );
+		world = mOffset * world;
 	}
 		
-	world = mOffset * world;
 
 	//world *= mOffset;
 
@@ -916,4 +928,3 @@ void RenderNode(Node * node, D3DXMATRIX world)
 		RenderNode(children[i], world);
 	}
 }
-
