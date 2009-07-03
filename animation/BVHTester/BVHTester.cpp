@@ -55,9 +55,9 @@ D3DXMATRIX                  g_World;
 D3DXMATRIX                  g_View;
 D3DXMATRIX                  g_Projection;
 
-vector<SimpleVertex>		g_LineVertices;
 vector<Node*>				g_nodes;
-int							count = 0;
+vector<SimpleVertex>		g_EdgeVertices;
+int							g_numEdges = 0;
 int							g_curFrame = 0;
 int							g_numFrames = 0;
 float						g_frameTime = 0;
@@ -67,20 +67,20 @@ float						g_frameTime = 0;
 //--------------------------------------------------------------------------------------
 HRESULT InitWindow( HINSTANCE hInstance, int nCmdShow );
 HRESULT InitDevice();
+HRESULT CreateVertexBuffer( int numVertices );
+HRESULT CreateIndexBuffer( int numIndicies );
 HRESULT ReadBVH();
-HRESULT ProcessHierarchy(vector<string> lines, int * curLine);
-HRESULT ProcessMotionData(vector<string> lines, int * curLine);
-HRESULT InitNodeFrames(Node * node, int * dataIndex, vector<float> data);
-D3DXMATRIX getNodeRotation(Node * Node, int * dataIndex, vector<float> data);
-D3DXMATRIX getNodeTranslation(Node * Node, int * dataIndex, vector<float> data);
-void SetCubeBuffers();
-void SetLineBuffers();
+HRESULT ProcessHierarchy( vector<string> lines, int * curLine, int * numEdges );
+HRESULT ProcessMotionData( vector<string> lines, int * curLine );
+HRESULT InitNodeFrames( Node * node, int * dataIndex, vector<float> data );
+D3DXMATRIX getNodeRotation( Node * Node, int * dataIndex, vector<float> data );
+D3DXMATRIX getNodeTranslation( Node * Node, int * dataIndex, vector<float> data );
 void CleanupDevice();
 void CleanupNodes();
-void CleanupNode(Node * node);
+void CleanupNode( Node * node );
 LRESULT CALLBACK    WndProc( HWND, UINT, WPARAM, LPARAM );
 void Render();
-void RenderNode(Node *node, D3DXMATRIX world);
+void RenderNode( Node *node, D3DXMATRIX world );
 
 
 //--------------------------------------------------------------------------------------
@@ -90,16 +90,22 @@ void RenderNode(Node *node, D3DXMATRIX world);
 int WINAPI wWinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLine, int nCmdShow )
 {
     if( FAILED( InitWindow( hInstance, nCmdShow ) ) )
-        return 0;
-
-    if( FAILED( ReadBVH() ) )
-		return 0;
+        return E_FAIL;
 
     if( FAILED( InitDevice() ) )
     {
         CleanupDevice();
-        return 0;
+        return E_FAIL;
     }
+	
+    if( FAILED( ReadBVH() ) )
+		return E_FAIL;
+
+	if( FAILED( CreateVertexBuffer( g_numEdges * 2 ) ) )
+		return E_FAIL;
+
+	if( FAILED( CreateIndexBuffer( g_numEdges * 2 ) ) )
+		return E_FAIL;
 
     // Main message loop
     MSG msg = {0};
@@ -324,16 +330,16 @@ HRESULT InitDevice()
     bd.CPUAccessFlags = 0;
     bd.MiscFlags = 0;
     D3D10_SUBRESOURCE_DATA InitData;
-    InitData.pSysMem = &g_LineVertices;
+    InitData.pSysMem = &g_EdgeVertices;
     hr = g_pd3dDevice->CreateBuffer( &bd, &InitData, &g_pVertexBuffer );
     if( FAILED( hr ) )
         return hr;*/
 	
-    // Create vertex buffer (lines)
+    // Create vertex buffer (edges)
 	/*bd.Usage = D3D10_USAGE_DYNAMIC;
 	bd.CPUAccessFlags = D3D10_CPU_ACCESS_WRITE;
     D3D10_SUBRESOURCE_DATA InitData2;
-    InitData2.pSysMem = &g_LineVertices;
+    InitData2.pSysMem = &g_EdgeVertices;
     hr = g_pd3dDevice->CreateBuffer( &bd, &InitData2, &g_pVertexBuffer[1] );
     if( FAILED( hr ) )
         return hr;*/
@@ -391,6 +397,56 @@ HRESULT InitDevice()
     return TRUE;
 }
 
+HRESULT CreateVertexBuffer(int numVertices)
+{
+    D3D10_BUFFER_DESC bd;
+    bd.Usage = D3D10_USAGE_DYNAMIC;
+	bd.ByteWidth = sizeof( SimpleVertex ) * numVertices;
+    bd.BindFlags = D3D10_BIND_VERTEX_BUFFER;
+    bd.CPUAccessFlags = D3D10_CPU_ACCESS_WRITE;
+    bd.MiscFlags = 0;
+
+	//bd.Usage = D3D10_USAGE_DYNAMIC;
+	//bd.CPUAccessFlags = D3D10_CPU_ACCESS_WRITE;
+    //D3D10_SUBRESOURCE_DATA InitData;
+    //InitData.pSysMem = &g_EdgeVertices[0];
+	HRESULT hr = g_pd3dDevice->CreateBuffer( &bd, NULL, &g_pVertexBuffer );
+    if( FAILED( hr ) )
+        return hr;
+
+	UINT stride = sizeof( SimpleVertex );
+	UINT offset = 0;
+    g_pd3dDevice->IASetVertexBuffers( 0, 1, &g_pVertexBuffer, &stride, &offset );
+
+	return hr;
+}
+
+HRESULT CreateIndexBuffer(int numIndicies)
+{
+	vector<int> indices;
+	for(int i = 0; i < numIndicies; ++i)
+	{
+		indices.push_back(i);
+	}
+	
+    D3D10_BUFFER_DESC bd;
+	bd.Usage = D3D10_USAGE_DEFAULT;
+    bd.ByteWidth = sizeof( DWORD ) * numIndicies;
+    bd.BindFlags = D3D10_BIND_INDEX_BUFFER;
+    bd.CPUAccessFlags = 0;
+    bd.MiscFlags = 0;
+    D3D10_SUBRESOURCE_DATA InitData;
+    InitData.pSysMem = &indices[0];
+	HRESULT hr = g_pd3dDevice->CreateBuffer( &bd, &InitData, &g_pIndexBuffer ); 
+
+    if( FAILED( hr ) )
+        return hr;
+
+    g_pd3dDevice->IASetIndexBuffer( g_pIndexBuffer, DXGI_FORMAT_R32_UINT, 0 );
+	
+	return hr;
+}
+
 //--------------------------------------------------------------------------------------
 // Read and process the BVH file
 //--------------------------------------------------------------------------------------
@@ -423,7 +479,7 @@ HRESULT ReadBVH()
 
 	int lineNum = 1;
 
-	if( FAILED(ProcessHierarchy(lines, &lineNum)))
+	if( FAILED(ProcessHierarchy(lines, &lineNum, &g_numEdges)))
 		return E_FAIL;
 
 	if (lines[lineNum++] != "MOTION")
@@ -438,11 +494,16 @@ HRESULT ReadBVH()
 
 //--------------------------------------------------------------------------------------
 // Read and process the Hierarchy section of the BVH file
+//
+// Parameters:
+// lines - Vector of strings, each is a line from the bvh file
+// lineNum - Current line number being processed
+// numEdges - Number of edges - parent/child node relations
 //--------------------------------------------------------------------------------------
-HRESULT ProcessHierarchy(vector<string> lines, int * lineNum)
+HRESULT ProcessHierarchy(vector<string> lines, int * lineNum, int * numEdges)
 {
     int depth = 0;
-
+	
     Node * curNode;
 
     do
@@ -478,6 +539,7 @@ HRESULT ProcessHierarchy(vector<string> lines, int * lineNum)
 				Node * parent = curNode->GetParent();
 				if (parent != NULL)
 				{
+					++*numEdges;
 					curNode = parent;
 				}
 				--depth;
@@ -783,73 +845,34 @@ void Render()
 	//
 	// Render the nodes
 	//
-	g_LineVertices.clear();
+	g_EdgeVertices.clear();
 	for(int i = 0; i < g_nodes.size(); ++i)
 	{
 		RenderNode(g_nodes[i], g_World);
 	}
 
-	// Set line vertex data
-	/*SimpleVertex *pData = NULL;
-	if( SUCCEEDED( g_pVertexBuffer[1]->Map( D3D10_MAP_WRITE_DISCARD, 0, reinterpret_cast< void** >( &pData ) ) ) )
+	// Set edge vertex data
+	SimpleVertex *pData = NULL;
+	if( SUCCEEDED( g_pVertexBuffer->Map( D3D10_MAP_WRITE_DISCARD, 0, reinterpret_cast< void** >( &pData ) ) ) )
 	{
-		  memcpy( pData, &g_LineVertices, sizeof( SimpleVertex ) * g_LineVertices.size() );
-		  g_pVertexBuffer[1]->Unmap( );
-	}*/
-
-	// Create line vertex buffer
-    D3D10_BUFFER_DESC bd;
-    bd.Usage = D3D10_USAGE_DEFAULT;
-	bd.ByteWidth = sizeof( SimpleVertex ) * g_LineVertices.size();
-    bd.BindFlags = D3D10_BIND_VERTEX_BUFFER;
-    bd.CPUAccessFlags = 0;
-    bd.MiscFlags = 0;
-
-	//bd.Usage = D3D10_USAGE_DYNAMIC;
-	//bd.CPUAccessFlags = D3D10_CPU_ACCESS_WRITE;
-    D3D10_SUBRESOURCE_DATA InitData;
-    InitData.pSysMem = &g_LineVertices[0];
-    if( FAILED( g_pd3dDevice->CreateBuffer( &bd, &InitData, &g_pVertexBuffer ) ) )
-        return;
-
-	// Set line vertex buffer
-	UINT stride = sizeof( SimpleVertex );
-	UINT offset = 0;
-    g_pd3dDevice->IASetVertexBuffers( 0, 1, &g_pVertexBuffer, &stride, &offset );
-
-	// Create line index buffer	
-	vector<int> indices;
-	for(int i = 0; i < g_LineVertices.size(); ++i)
-	{
-		indices.push_back(i);
+		  memcpy( pData, &g_EdgeVertices[0], sizeof( SimpleVertex ) * g_numEdges * 2 );
+		  g_pVertexBuffer->Unmap( );
 	}
-	
-	bd.Usage = D3D10_USAGE_DEFAULT;
-    bd.ByteWidth = sizeof( DWORD ) * indices.size();
-    bd.BindFlags = D3D10_BIND_INDEX_BUFFER;
-    bd.CPUAccessFlags = 0;
-    bd.MiscFlags = 0;
-    InitData.pSysMem = &indices[0];
-    if( FAILED( g_pd3dDevice->CreateBuffer( &bd, &InitData, &g_pIndexBuffer ) ) )
-        return;
-
-    // Set line index buffer
-    g_pd3dDevice->IASetIndexBuffer( g_pIndexBuffer, DXGI_FORMAT_R32_UINT, 0 );
 
     //
-    // Update variables for the lines
+    // Update variables for the edges
     //
     g_pWorldVariable->SetMatrix( ( float* )&g_World );
 
     //
-    // Render the lines
+    // Render the edges
     //
     D3D10_TECHNIQUE_DESC techDesc;
     g_pTechnique->GetDesc( &techDesc );
     for( UINT p = 0; p < techDesc.Passes; ++p )
     {
         g_pTechnique->GetPassByIndex( p )->Apply( 0 );
-		g_pd3dDevice->DrawIndexed(indices.size(), 0, 0);
+		g_pd3dDevice->DrawIndexed(g_numEdges * 2, 0, 0);
     }	
 
     //
@@ -871,7 +894,7 @@ void RenderNode(Node * node, D3DXMATRIX world)
 		vertex.Pos = D3DXVECTOR3( 0, 0, 0 );
 		vertex.Color = D3DXVECTOR4( 1, 1, 1, 1 );
 		D3DXVec3TransformCoord( &vertex.Pos, &vertex.Pos, &world );
-		g_LineVertices.push_back( vertex );
+		g_EdgeVertices.push_back( vertex );
 	}
 
 	if( g_curFrame < node->GetNumKeyFrames() )
@@ -888,7 +911,7 @@ void RenderNode(Node * node, D3DXMATRIX world)
 		vertex.Pos = D3DXVECTOR3( 0, 0, 0 );
 		vertex.Color = D3DXVECTOR4( 1, 1, 1, 1 );
 		D3DXVec3TransformCoord( &vertex.Pos, &vertex.Pos, &world );
-		g_LineVertices.push_back(vertex);
+		g_EdgeVertices.push_back(vertex);
 	}
 
     //
