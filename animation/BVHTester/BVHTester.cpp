@@ -9,7 +9,6 @@
 #include <iostream>
 #include <fstream>
 #include <string>
-#include <time.h>
 
 #include <vector>
 #include <windows.h>
@@ -18,18 +17,11 @@
 #include <d3dx10.h>
 
 #include "Node.h"
-#include "ChildNode.h"
 
 #include "resource.h"
 
 using namespace std;
 using namespace BVH;
-
-//--------------------------------------------------------------------------------------
-// constants
-//--------------------------------------------------------------------------------------
-
-#define PI 3.14
 
 //--------------------------------------------------------------------------------------
 // structures
@@ -59,13 +51,12 @@ ID3D10Buffer*               g_pIndexBuffer = NULL;
 ID3D10EffectMatrixVariable* g_pWorldVariable = NULL;
 ID3D10EffectMatrixVariable* g_pViewVariable = NULL;
 ID3D10EffectMatrixVariable* g_pProjectionVariable = NULL;
-D3DXMATRIX                  g_World1;
-D3DXMATRIX                  g_World2;
+D3DXMATRIX                  g_World;
 D3DXMATRIX                  g_View;
 D3DXMATRIX                  g_Projection;
 
-vector<Node*>			g_nodes;
-//vector<vector<float>>		g_frames;
+vector<SimpleVertex>		g_LineVertices;
+vector<Node*>				g_nodes;
 int							count = 0;
 int							g_curFrame = 0;
 int							g_numFrames = 0;
@@ -82,7 +73,8 @@ HRESULT ProcessMotionData(vector<string> lines, int * curLine);
 HRESULT InitNodeFrames(Node * node, int * dataIndex, vector<float> data);
 D3DXMATRIX getNodeRotation(Node * Node, int * dataIndex, vector<float> data);
 D3DXMATRIX getNodeTranslation(Node * Node, int * dataIndex, vector<float> data);
-vector<SimpleVertex> CreateVertices();
+void SetCubeBuffers();
+void SetLineBuffers();
 void CleanupDevice();
 void CleanupNodes();
 void CleanupNode(Node * node);
@@ -322,8 +314,8 @@ HRESULT InitDevice()
     // Set the input layout
     g_pd3dDevice->IASetInputLayout( g_pVertexLayout );
 
-    // Create vertex buffer
-    SimpleVertex vertices[] =
+    // Create vertex buffer (cube)
+    /*SimpleVertex vertices[] =
     {
         { D3DXVECTOR3( -1.0f, 1.0f, -1.0f ), D3DXVECTOR4( 0.0f, 0.0f, 1.0f, 1.0f ) },
         { D3DXVECTOR3( 1.0f, 1.0f, -1.0f ), D3DXVECTOR4( 0.0f, 1.0f, 0.0f, 1.0f ) },
@@ -333,28 +325,31 @@ HRESULT InitDevice()
         { D3DXVECTOR3( 1.0f, -1.0f, -1.0f ), D3DXVECTOR4( 1.0f, 1.0f, 0.0f, 1.0f ) },
         { D3DXVECTOR3( 1.0f, -1.0f, 1.0f ), D3DXVECTOR4( 1.0f, 1.0f, 1.0f, 1.0f ) },
         { D3DXVECTOR3( -1.0f, -1.0f, 1.0f ), D3DXVECTOR4( 0.0f, 0.0f, 0.0f, 1.0f ) },
-    };
+    };*/
 
-    D3D10_BUFFER_DESC bd;
+    /*D3D10_BUFFER_DESC bd;
     bd.Usage = D3D10_USAGE_DEFAULT;
     bd.ByteWidth = sizeof( SimpleVertex ) * 8;
     bd.BindFlags = D3D10_BIND_VERTEX_BUFFER;
     bd.CPUAccessFlags = 0;
     bd.MiscFlags = 0;
     D3D10_SUBRESOURCE_DATA InitData;
-    InitData.pSysMem = &vertices;
+    InitData.pSysMem = &g_LineVertices;
     hr = g_pd3dDevice->CreateBuffer( &bd, &InitData, &g_pVertexBuffer );
     if( FAILED( hr ) )
-        return hr;
-
-    // Set vertex buffer
-    UINT stride = sizeof( SimpleVertex );
-    UINT offset = 0;
-    g_pd3dDevice->IASetVertexBuffers( 0, 1, &g_pVertexBuffer, &stride, &offset );
+        return hr;*/
+	
+    // Create vertex buffer (lines)
+	/*bd.Usage = D3D10_USAGE_DYNAMIC;
+	bd.CPUAccessFlags = D3D10_CPU_ACCESS_WRITE;
+    D3D10_SUBRESOURCE_DATA InitData2;
+    InitData2.pSysMem = &g_LineVertices;
+    hr = g_pd3dDevice->CreateBuffer( &bd, &InitData2, &g_pVertexBuffer[1] );
+    if( FAILED( hr ) )
+        return hr;*/
 
     // Create index buffer
-    // Create vertex buffer
-    DWORD indices[] =
+    /*DWORD indices[] =
     {
         3,1,0,
         2,1,3,
@@ -382,17 +377,16 @@ HRESULT InitDevice()
     InitData.pSysMem = indices;
     hr = g_pd3dDevice->CreateBuffer( &bd, &InitData, &g_pIndexBuffer );
     if( FAILED( hr ) )
-        return hr;
+        return hr;*/
 
     // Set index buffer
-    g_pd3dDevice->IASetIndexBuffer( g_pIndexBuffer, DXGI_FORMAT_R32_UINT, 0 );
+    //g_pd3dDevice->IASetIndexBuffer( g_pIndexBuffer, DXGI_FORMAT_R32_UINT, 0 );
+	
+    // Set line primitive topology
+    g_pd3dDevice->IASetPrimitiveTopology( D3D10_PRIMITIVE_TOPOLOGY_LINELIST );
 
-    // Set primitive topology
-    g_pd3dDevice->IASetPrimitiveTopology( D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST );
-
-    // Initialize the world matrices
-    D3DXMatrixIdentity( &g_World1 );
-    D3DXMatrixIdentity( &g_World2 );
+    // Initialize the world matrix
+    D3DXMatrixIdentity( &g_World );
 
     // Initialize the view matrix
     D3DXVECTOR3 Eye( 500.0f, 10.0f, 500.0f );
@@ -402,6 +396,7 @@ HRESULT InitDevice()
 
     // Initialize the projection matrix
     D3DXMatrixPerspectiveFovLH( &g_Projection, ( float )D3DX_PI * 0.25f, width / ( FLOAT )height, 0.1f, 1000.0f );
+    g_pProjectionVariable->SetMatrix( ( float* )&g_Projection );
 
     return TRUE;
 }
@@ -490,11 +485,10 @@ HRESULT ProcessHierarchy(vector<string> lines, int * lineNum)
 			if (line.compare(0, 1, "{") == 0) {} // do nothing
 			else if (line.compare(pos, 1, "}") == 0)
 			{
-				ChildNode * childNode = static_cast<ChildNode*>(curNode);
-				
-				if (childNode != NULL)
+				Node * parent = curNode->GetParent();
+				if (parent != NULL)
 				{
-					curNode = childNode->GetParent();
+					curNode = parent;
 				}
 				--depth;
 			} 
@@ -508,7 +502,7 @@ HRESULT ProcessHierarchy(vector<string> lines, int * lineNum)
 			}
 			else if (line.compare(pos, 5, "JOINT") == 0)
 			{
-				ChildNode * joint = new ChildNode(line.substr(pos, 5), curNode, true);
+				Node * joint = new Node(line.substr(pos, 5), curNode);
 				curNode->AddChild(joint);
 				curNode = joint;
 
@@ -516,7 +510,7 @@ HRESULT ProcessHierarchy(vector<string> lines, int * lineNum)
 			}
 			else if (line.compare(pos, 3, "End") == 0)
 			{
-				ChildNode * end = new ChildNode("", curNode, false);
+				Node * end = new Node("", curNode);
 				curNode->AddChild(end);
 				curNode = end;
 
@@ -633,10 +627,6 @@ HRESULT InitNodeFrames(Node * node, int * dataIndex, vector<float> data)
 
 D3DXMATRIX getNodeRotation(Node * Node, int * dataIndex, vector<float> data)
 {
-	//D3DXMATRIX zRotation, xRotation, yRotation;
-
-	//float z = 0, x = 0, y = 0;
-
 	D3DXMATRIX x, y, z;
 	D3DXMatrixIdentity(&x);
 	D3DXMatrixIdentity(&y);
@@ -648,38 +638,23 @@ D3DXMATRIX getNodeRotation(Node * Node, int * dataIndex, vector<float> data)
 	{
 		if ((channels[i] & Channel::Xrotation) == Channel::Xrotation)
 		{
-			//xRotation = Quaternion.CreateFromAxisAngle(Vector3.UnitX, bvhReader.Frames[curFrame][++dataIndex]);
-			//xRotation = Matrix.CreateRotationX(MathHelper.ToRadians(bvhReader.Frames[curFrame][++*dataIndex]));
-			//x = data[(*dataIndex)++] * (PI / 180.0);
-			D3DXMatrixRotationX(&x, data[(*dataIndex)++] * (PI / 180.0f));
+			D3DXMatrixRotationX(&x, data[(*dataIndex)++] * (D3DX_PI / 180.0f));
 		}
 		else if ((channels[i] & Channel::Yrotation) == Channel::Yrotation)
 		{
-			//yRotation = Quaternion.CreateFromAxisAngle(Vector3.UnitY, bvhReader.Frames[curFrame][++dataIndex]);
-			//yRotation = Matrix.CreateRotationY(MathHelper.ToRadians(bvhReader.Frames[curFrame][++*dataIndex]));
-			//y = data[(*dataIndex)++] * (PI / 180.0);
-			D3DXMatrixRotationX(&y, data[(*dataIndex)++] * (PI / 180.0f));
+			D3DXMatrixRotationY(&y, data[(*dataIndex)++] * (D3DX_PI / 180.0f));
 		}
 		else if ((channels[i] & Channel::Zrotation) == Channel::Zrotation)
 		{
-			//zRotation = Quaternion.CreateFromAxisAngle(Vector3.UnitZ, bvhReader.Frames[curFrame][++dataIndex]);
-			//zRotation = Matrix.CreateRotationZ(MathHelper.ToRadians(bvhReader.Frames[curFrame][++*dataIndex]));
-			//z = data[(*dataIndex)++] * (PI / 180.0);
-			D3DXMatrixRotationX(&z, data[(*dataIndex)++] * (PI / 180.0f));
-			
+			D3DXMatrixRotationZ(&z, data[(*dataIndex)++] * (D3DX_PI / 180.0f));			
 		}
 	}
-
-	//D3DXMATRIX rotation;
-	//D3DXMatrixRotationYawPitchRoll(&rotation, y, z, x);
 	
-    //return y * x * z;
-	return z * x * y;
+    return y * x * z;
 }
 
 D3DXMATRIX getNodeTranslation(Node * Node, int * dataIndex, vector<float> data)
 {
-    //Vector3 translation = Vector3.Zero;
 	float x = 0, y = 0, z = 0;
 
 	vector<Channel> channels = Node->GetChannels();
@@ -689,17 +664,14 @@ D3DXMATRIX getNodeTranslation(Node * Node, int * dataIndex, vector<float> data)
 		if ((channels[i] & Channel::Xposition) == Channel::Xposition)
 		{
 			x = data[(*dataIndex)++];
-			//translation.X = bvhReader.Frames[curFrame][++*dataIndex];
 		}
 		else if ((channels[i] & Channel::Yposition) == Channel::Yposition)
 		{
 			y = data[(*dataIndex)++];
-			//translation.Y = bvhReader.Frames[curFrame][++*dataIndex];
 		}
 		else if ((channels[i] & Channel::Zposition) == Channel::Zposition)
 		{
 			z = data[(*dataIndex)++];
-			//translation.Z = bvhReader.Frames[curFrame][++*dataIndex];
 		}
 	}
 
@@ -777,7 +749,7 @@ LRESULT CALLBACK WndProc( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam 
 void Render()
 {
     // Update our time
-    static float t = 0.0f;
+    /*static float t = 0.0f;
     if( g_driverType == D3D10_DRIVER_TYPE_REFERENCE )
     {
         t += ( float )D3DX_PI * 0.0125f;
@@ -789,24 +761,7 @@ void Render()
         if( dwTimeStart == 0 )
             dwTimeStart = dwTimeCur;
         t = ( dwTimeCur - dwTimeStart ) / 1000.0f;
-    }
-
-    //// 1st Cube: Rotate around the origin
-    //D3DXMatrixRotationY( &g_World1, t );
-
-    //// 2nd Cube:  Rotate around origin
-    //D3DXMATRIX mTranslate;
-    //D3DXMATRIX mOrbit;
-    //D3DXMATRIX mSpin;
-    //D3DXMATRIX mScale;
-    //D3DXMatrixRotationZ( &mSpin, -t );
-    //D3DXMatrixRotationY( &mOrbit, -t * 2.0f );
-    //D3DXMatrixTranslation( &mTranslate, -4.0f, 0.0f, 0.0f );
-    //D3DXMatrixScaling( &mScale, 0.3f, 0.3f, 0.3f );
-
-    //D3DXMatrixMultiply( &g_World2, &mScale, &mSpin );
-    //D3DXMatrixMultiply( &g_World2, &g_World2, &mTranslate );
-    //D3DXMatrixMultiply( &g_World2, &g_World2, &mOrbit );
+    }*/
 
     //
     // Clear the back buffer
@@ -819,12 +774,6 @@ void Render()
     //
     g_pd3dDevice->ClearDepthStencilView( g_pDepthStencilView, D3D10_CLEAR_DEPTH, 1.0f, 0 );
 
-	// Render the nodes
-	for(int i = 0; i < g_nodes.size(); ++i)
-	{
-		RenderNode(g_nodes[i], g_World1);
-	}
-
 	//
 	// Update view matrix - point at first root node
 	//
@@ -836,40 +785,87 @@ void Render()
 		return;
 	D3DXVECTOR3 Up( 0.0f, 1.0f, 0.0f );
 	D3DXMatrixLookAtLH( &g_View, &Eye, &At, &Up );
+    g_pViewVariable->SetMatrix( ( float* )&g_View );
+    
+    // Set cube vertex buffer
+	/*UINT stride = sizeof( SimpleVertex );
+	UINT offset = 0;
+    g_pd3dDevice->IASetVertexBuffers( 0, 1, &g_pVertexBuffer, &stride, &offset );*/
 
-    //
-    // Update variables for the first cube
-    //
-    //g_pWorldVariable->SetMatrix( ( float* )&g_World1 );
-    //g_pViewVariable->SetMatrix( ( float* )&g_View );
-    //g_pProjectionVariable->SetMatrix( ( float* )&g_Projection );
+	// Set triangle primitive topology
+    //g_pd3dDevice->IASetPrimitiveTopology( D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST );
+
+	//
+	// Render the nodes
+	//
+	g_LineVertices.clear();
+	for(int i = 0; i < g_nodes.size(); ++i)
+	{
+		RenderNode(g_nodes[i], g_World);
+	}
+
+	// Set line vertex data
+	/*SimpleVertex *pData = NULL;
+	if( SUCCEEDED( g_pVertexBuffer[1]->Map( D3D10_MAP_WRITE_DISCARD, 0, reinterpret_cast< void** >( &pData ) ) ) )
+	{
+		  memcpy( pData, &g_LineVertices, sizeof( SimpleVertex ) * g_LineVertices.size() );
+		  g_pVertexBuffer[1]->Unmap( );
+	}*/
+
+	// Create line vertex buffer
+    D3D10_BUFFER_DESC bd;
+    bd.Usage = D3D10_USAGE_DEFAULT;
+	bd.ByteWidth = sizeof( SimpleVertex ) * g_LineVertices.size();
+    bd.BindFlags = D3D10_BIND_VERTEX_BUFFER;
+    bd.CPUAccessFlags = 0;
+    bd.MiscFlags = 0;
+
+	//bd.Usage = D3D10_USAGE_DYNAMIC;
+	//bd.CPUAccessFlags = D3D10_CPU_ACCESS_WRITE;
+    D3D10_SUBRESOURCE_DATA InitData;
+    InitData.pSysMem = &g_LineVertices[0];
+    if( FAILED( g_pd3dDevice->CreateBuffer( &bd, &InitData, &g_pVertexBuffer ) ) )
+        return;
+
+	// Set line vertex buffer
+	UINT stride = sizeof( SimpleVertex );
+	UINT offset = 0;
+    g_pd3dDevice->IASetVertexBuffers( 0, 1, &g_pVertexBuffer, &stride, &offset );
+
+	// Create line index buffer	
+	vector<int> indices;
+	for(int i = 0; i < g_LineVertices.size(); ++i)
+	{
+		indices.push_back(i);
+	}
 	
-    ////
-    //// Render the first cube
-    ////
-    //D3D10_TECHNIQUE_DESC techDesc;
-    //g_pTechnique->GetDesc( &techDesc );
-    //for( UINT p = 0; p < techDesc.Passes; ++p )
-    //{
-    //    g_pTechnique->GetPassByIndex( p )->Apply( 0 );
-    //    g_pd3dDevice->DrawIndexed( 36, 0, 0 );
-    //}
+	bd.Usage = D3D10_USAGE_DEFAULT;
+    bd.ByteWidth = sizeof( DWORD ) * indices.size();
+    bd.BindFlags = D3D10_BIND_INDEX_BUFFER;
+    bd.CPUAccessFlags = 0;
+    bd.MiscFlags = 0;
+    InitData.pSysMem = &indices[0];
+    if( FAILED( g_pd3dDevice->CreateBuffer( &bd, &InitData, &g_pIndexBuffer ) ) )
+        return;
+
+    // Set line index buffer
+    g_pd3dDevice->IASetIndexBuffer( g_pIndexBuffer, DXGI_FORMAT_R32_UINT, 0 );
 
     //
-    // Update variables for the second cube
+    // Update variables for the lines
     //
-    //g_pWorldVariable->SetMatrix( ( float* )&g_World2 );
-    //g_pViewVariable->SetMatrix( ( float* )&g_View );
-    //g_pProjectionVariable->SetMatrix( ( float* )&g_Projection );
+    g_pWorldVariable->SetMatrix( ( float* )&g_World );
 
-    ////
-    //// Render the second cube
-    ////
-    //for( UINT p = 0; p < techDesc.Passes; ++p )
-    //{
-    //    g_pTechnique->GetPassByIndex( p )->Apply( 0 );
-    //    g_pd3dDevice->DrawIndexed( 36, 0, 0 );
-    //}
+    //
+    // Render the lines
+    //
+    D3D10_TECHNIQUE_DESC techDesc;
+    g_pTechnique->GetDesc( &techDesc );
+    for( UINT p = 0; p < techDesc.Passes; ++p )
+    {
+        g_pTechnique->GetPassByIndex( p )->Apply( 0 );
+		g_pd3dDevice->DrawIndexed(indices.size(), 0, 0);
+    }	
 
     //
     // Present our back buffer to our front buffer
@@ -882,42 +878,49 @@ void RenderNode(Node * node, D3DXMATRIX world)
 	D3DXVECTOR3 offset = node->GetOffset();
     D3DXMATRIX mOffset;
 	D3DXMatrixTranslation(&mOffset, offset.x, offset.y, offset.z);
-	
-    D3DXMATRIX mLocal;
 
-	if(g_curFrame < node->GetNumKeyFrames())
+	Node * parent = node->GetParent();
+	if( parent != NULL ) 
 	{
-		KeyFrame keyFrame = node->GetKeyFrame(g_curFrame);
-
-		//D3DXMatrixMultiply( &mOffset, &mOffset, &world);
-		//D3DXMatrixMultiply( &world, &mOffset, &keyFrame.translation );	
-		//D3DXMatrixMultiply( &world, &keyFrame.rotation, &world );	
-		world = keyFrame.rotation * (mOffset * keyFrame.translation) * world;
-	} else {
-		//D3DXMatrixMultiply( &world, &mOffset, &world );
-		world = mOffset * world;
+		SimpleVertex vertex;
+		vertex.Pos = D3DXVECTOR3( 0, 0, 0 );
+		vertex.Color = D3DXVECTOR4( 1, 1, 1, 1 );
+		D3DXVec3TransformCoord( &vertex.Pos, &vertex.Pos, &world );
+		g_LineVertices.push_back( vertex );
 	}
-		
 
-	//world *= mOffset;
+	if( g_curFrame < node->GetNumKeyFrames() )
+	{
+		KeyFrame keyFrame = node->GetKeyFrame( g_curFrame );
+		world = keyFrame.rotation * keyFrame.translation * mOffset * world;
+	} else {
+		world = mOffset * world;	
+	}	
+
+	if( parent != NULL ) 
+	{
+		SimpleVertex vertex;
+		vertex.Pos = D3DXVECTOR3( 0, 0, 0 );
+		vertex.Color = D3DXVECTOR4( 1, 1, 1, 1 );
+		D3DXVec3TransformCoord( &vertex.Pos, &vertex.Pos, &world );
+		g_LineVertices.push_back(vertex);
+	}
 
     //
     // Update variables for the cube
     //
-    g_pWorldVariable->SetMatrix( ( float* )&world );
-    g_pViewVariable->SetMatrix( ( float* )&g_View );
-    g_pProjectionVariable->SetMatrix( ( float* )&g_Projection );
+    //g_pWorldVariable->SetMatrix( ( float* )&world );
 
     //
     // Render the cube
     //
-    D3D10_TECHNIQUE_DESC techDesc;
+   /* D3D10_TECHNIQUE_DESC techDesc;
     g_pTechnique->GetDesc( &techDesc );
     for( UINT p = 0; p < techDesc.Passes; ++p )
     {
         g_pTechnique->GetPassByIndex( p )->Apply( 0 );
         g_pd3dDevice->DrawIndexed( 36, 0, 0 );
-    }
+    }*/
 	
 	//
 	// Render the children

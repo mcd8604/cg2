@@ -367,14 +367,6 @@
 			>
 		</File>
 		<File
-			RelativePath=".\ChildNode.cpp"
-			>
-		</File>
-		<File
-			RelativePath=".\ChildNode.h"
-			>
-		</File>
-		<File
 			RelativePath=".\directx.ico"
 			>
 		</File>
@@ -396,6 +388,10 @@
 			>
 		</File>
 		<File
+			RelativePath=".\Legs.bvh"
+			>
+		</File>
+		<File
 			RelativePath=".\Node.cpp"
 			>
 		</File>
@@ -405,6 +401,22 @@
 		</File>
 		<File
 			RelativePath=".\Resource.h"
+			>
+		</File>
+		<File
+			RelativePath=".\Stand.bvh"
+			>
+		</File>
+		<File
+			RelativePath=".\tiptoe.bvh"
+			>
+		</File>
+		<File
+			RelativePath=".\Turn.bvh"
+			>
+		</File>
+		<File
+			RelativePath=".\wave.bvh"
 			>
 		</File>
 	</Files>

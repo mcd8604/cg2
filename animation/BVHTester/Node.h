@@ -31,6 +31,8 @@ namespace BVH
 	class Node
 	{
 	protected:
+		Node * parent;
+		bool isJoint;
 		string name;	
 		D3DXVECTOR3 offset;
 		vector<Node*> children;
@@ -38,7 +40,9 @@ namespace BVH
 		vector<KeyFrame> keyFrames;
 	public:
 		Node(string name);
+		Node(string name, Node * parent);
 		~Node(void);
+		Node * GetParent();
 		void SetName(string name);
 		string GetName();
 		void SetOffset(D3DXVECTOR3 offset);

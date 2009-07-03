@@ -5,10 +5,22 @@ namespace BVH
 	Node::Node(string name)
 	{
 		this->name = name;
+		this->parent = NULL;
+	}
+
+	Node::Node(string name, Node * parent)
+	{
+		this->name = name;
+		this->parent = parent;
 	}
 
 	Node::~Node(void)
 	{
+	}
+
+	Node * Node::GetParent()
+	{
+		return parent;
 	}
 
 	void Node::SetName(string name)
