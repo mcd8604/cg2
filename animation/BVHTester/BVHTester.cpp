@@ -112,16 +112,6 @@ int WINAPI wWinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdL
         }
         else
         {
-			// Update frame
-			count++;
-			if(count >= 25)
-			{
-				g_curFrame++;
-				count = 0;
-			}
-			if(g_curFrame >= g_numFrames)
-				g_curFrame = 0;
-
             Render();
         }
     }
@@ -407,7 +397,7 @@ HRESULT InitDevice()
 HRESULT ReadBVH()
 {
 	ifstream * bvhFile = new ifstream();
-	bvhFile->open("Jog.bvh");
+	bvhFile->open("wave.bvh");
 	
 	if(!bvhFile->is_open())
 	{
@@ -748,20 +738,15 @@ LRESULT CALLBACK WndProc( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam 
 //--------------------------------------------------------------------------------------
 void Render()
 {
-    // Update our time
-    /*static float t = 0.0f;
-    if( g_driverType == D3D10_DRIVER_TYPE_REFERENCE )
-    {
-        t += ( float )D3DX_PI * 0.0125f;
-    }
-    else
-    {
-        static DWORD dwTimeStart = 0;
-        DWORD dwTimeCur = GetTickCount();
-        if( dwTimeStart == 0 )
-            dwTimeStart = dwTimeCur;
-        t = ( dwTimeCur - dwTimeStart ) / 1000.0f;
-    }*/
+	// Update time and frame, looping last frame to first frame
+    static float t = 0.0f;
+    static DWORD dwTimeStart = 0;
+    DWORD dwTimeCur = GetTickCount();
+    if( dwTimeStart == 0 )
+        dwTimeStart = dwTimeCur;
+
+    t = ( dwTimeCur - dwTimeStart ) / 1000.0f;
+	g_curFrame = (int)(t / g_frameTime) % g_numFrames;
 
     //
     // Clear the back buffer
