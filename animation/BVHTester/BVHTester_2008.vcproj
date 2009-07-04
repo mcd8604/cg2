@@ -99,7 +99,7 @@
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
-				CommandLine="copy &quot;$(ProjectDir)$(ProjectName).fx&quot; &quot;$(TargetDir)&quot;&#x0D;&#x0A;copy &quot;$(ProjectDir)Jog.bvh&quot; &quot;$(TargetDir)&quot;&#x0D;&#x0A;"
+				CommandLine="copy &quot;$(ProjectDir)$(ProjectName).fx&quot; &quot;$(TargetDir)&quot;&#x0D;&#x0A;"
 			/>
 		</Configuration>
 		<Configuration
