@@ -6,10 +6,6 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 //--------------------------------------------------------------------------------------
 
-#include <iostream>
-#include <fstream>
-#include <string>
-
 #include <vector>
 #include <windows.h>
 
@@ -17,20 +13,12 @@
 #include <d3dx10.h>
 
 #include "Node.h"
+#include "BVHFigure.h"
 
 #include "resource.h"
 
 using namespace std;
 using namespace BVH;
-
-//--------------------------------------------------------------------------------------
-// structures
-//--------------------------------------------------------------------------------------
-struct SimpleVertex
-{
-    D3DXVECTOR3 Pos;
-    D3DXVECTOR4 Color;
-};
 
 //--------------------------------------------------------------------------------------
 // Global Variables
@@ -46,44 +34,21 @@ ID3D10DepthStencilView*     g_pDepthStencilView = NULL;
 ID3D10Effect*               g_pEffect = NULL;
 ID3D10EffectTechnique*      g_pTechniqueRender = NULL;
 ID3D10InputLayout*          g_pVertexLayout = NULL;
-ID3D10Buffer*               g_pEdgeVertexBuffer = NULL;
-ID3D10Buffer*               g_pEdgeIndexBuffer = NULL;
-ID3D10Buffer*               g_pCubeVertexBuffer = NULL;
-ID3D10Buffer*               g_pCubeIndexBuffer = NULL;
-ID3D10EffectMatrixVariable* g_pWorldVariable = NULL;
 ID3D10EffectMatrixVariable* g_pViewVariable = NULL;
 ID3D10EffectMatrixVariable* g_pProjectionVariable = NULL;
-D3DXMATRIX                  g_World;
-D3DXMATRIX                  g_View;
+ID3D10EffectMatrixVariable* g_pWorldVariable = NULL;
 D3DXMATRIX                  g_Projection;
 
-vector<Node*>				g_nodes;
-vector<SimpleVertex>		g_EdgeVertices;
-int							g_numEdges = 0;
-int							g_curFrame = 0;
-int							g_numFrames = 0;
-float						g_frameTime = 0;
+BVHFigure*					g_figure;
 
 //--------------------------------------------------------------------------------------
 // Forward declarations
 //--------------------------------------------------------------------------------------
 HRESULT InitWindow( HINSTANCE hInstance, int nCmdShow );
 HRESULT InitDevice();
-HRESULT CreateEdgeVertexBuffer( int numEdges );
-HRESULT ReadBVH();
-HRESULT ProcessHierarchy( vector<string> lines, int * curLine, int * numEdges );
-HRESULT ProcessMotionData( vector<string> lines, int * curLine );
-HRESULT InitNodeFrames( Node * node, int * dataIndex, vector<float> data );
-D3DXMATRIX getNodeRotation( Node * node, int * dataIndex, vector<float> data );
-D3DXMATRIX getNodeTranslation( Node * node, int * dataIndex, vector<float> data );
 void CleanupDevice();
-void CleanupNodes();
-void CleanupNode( Node * node );
 LRESULT CALLBACK    WndProc( HWND, UINT, WPARAM, LPARAM );
 void Render();
-void RenderNode( Node * node, D3DXMATRIX world );
-void RenderEdges();
-
 
 //--------------------------------------------------------------------------------------
 // Entry point to the program. Initializes everything and goes into a message processing 
@@ -99,11 +64,13 @@ int WINAPI wWinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdL
         CleanupDevice();
         return E_FAIL;
     }
+
+	g_figure = new BVHFigure();
 	
-    if( FAILED( ReadBVH() ) )
+    if( FAILED( g_figure->ReadBVH("Jog.bvh") ) )
 		return E_FAIL;
 
-	if( FAILED( CreateEdgeVertexBuffer( g_numEdges ) ) )
+    if( FAILED( g_figure->Initialize( g_pd3dDevice, g_pTechniqueRender, g_pWorldVariable ) ) )
 		return E_FAIL;
 
     // Main message loop
@@ -121,8 +88,10 @@ int WINAPI wWinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdL
         }
     }
 	
-	CleanupNodes();
+	g_figure->Cleanup();
     CleanupDevice();
+
+	delete g_figure;
 
     return ( int )msg.wParam;
 }
@@ -309,72 +278,6 @@ HRESULT InitDevice()
 	// Set the input layout
 	g_pd3dDevice->IASetInputLayout( g_pVertexLayout );
 
-    // Create cube vertex buffer
-    SimpleVertex vertices[] =
-    {
-        { D3DXVECTOR3( -1.0f, 1.0f, -1.0f ), D3DXVECTOR4( 0.0f, 0.0f, 1.0f, 1.0f ) },
-        { D3DXVECTOR3( 1.0f, 1.0f, -1.0f ), D3DXVECTOR4( 0.0f, 1.0f, 0.0f, 1.0f ) },
-        { D3DXVECTOR3( 1.0f, 1.0f, 1.0f ), D3DXVECTOR4( 0.0f, 1.0f, 1.0f, 1.0f ) },
-        { D3DXVECTOR3( -1.0f, 1.0f, 1.0f ), D3DXVECTOR4( 1.0f, 0.0f, 0.0f, 1.0f ) },
-        { D3DXVECTOR3( -1.0f, -1.0f, -1.0f ), D3DXVECTOR4( 1.0f, 0.0f, 1.0f, 1.0f ) },
-        { D3DXVECTOR3( 1.0f, -1.0f, -1.0f ), D3DXVECTOR4( 1.0f, 1.0f, 0.0f, 1.0f ) },
-        { D3DXVECTOR3( 1.0f, -1.0f, 1.0f ), D3DXVECTOR4( 1.0f, 1.0f, 1.0f, 1.0f ) },
-        { D3DXVECTOR3( -1.0f, -1.0f, 1.0f ), D3DXVECTOR4( 0.0f, 0.0f, 0.0f, 1.0f ) },
-    };
-
-	D3D10_BUFFER_DESC bd;
-	bd.ByteWidth = sizeof( SimpleVertex ) * 8;
-	bd.Usage = D3D10_USAGE_IMMUTABLE;
-	bd.BindFlags = D3D10_BIND_VERTEX_BUFFER;
-	bd.CPUAccessFlags = 0;
-	bd.MiscFlags = 0;
-
-	D3D10_SUBRESOURCE_DATA initData;
-	initData.pSysMem = &vertices;
-
-	g_pd3dDevice->CreateBuffer( &bd, &initData, &g_pCubeVertexBuffer );
-
-    // Create cube index buffer
-    DWORD indices[] =
-    {
-        3,1,0,
-        2,1,3,
-
-        0,5,4,
-        1,5,0,
-
-        3,4,7,
-        0,4,3,
-
-        1,6,5,
-        2,6,1,
-
-        2,7,6,
-        3,7,2,
-
-        6,4,5,
-        7,4,6,
-    };
-
-	bd.ByteWidth = sizeof( DWORD ) * 36;
-	bd.Usage = D3D10_USAGE_IMMUTABLE;
-	bd.BindFlags = D3D10_BIND_INDEX_BUFFER;
-	bd.CPUAccessFlags = 0;
-	bd.MiscFlags = 0;
-
-	initData.pSysMem = &indices;
-
-	g_pd3dDevice->CreateBuffer( &bd, &initData, &g_pCubeIndexBuffer );
-
-    // Initialize the world matrix
-    D3DXMatrixIdentity( &g_World );
-
-    // Initialize the view matrix
-    D3DXVECTOR3 Eye( 500.0f, 10.0f, 500.0f );
-    D3DXVECTOR3 At( 0.0f, 0.0f, 0.0f );
-    D3DXVECTOR3 Up( 0.0f, 1.0f, 0.0f );
-    D3DXMatrixLookAtLH( &g_View, &Eye, &At, &Up );
-
     // Initialize the projection matrix
     D3DXMatrixPerspectiveFovLH( &g_Projection, ( float )D3DX_PI * 0.25f, width / ( FLOAT )height, 0.1f, 1000.0f );
     g_pProjectionVariable->SetMatrix( ( float* )&g_Projection );
@@ -382,318 +285,10 @@ HRESULT InitDevice()
     return TRUE;
 }
 
-HRESULT CreateEdgeVertexBuffer( int numEdges )
-{
-	int numVertices = numEdges * 2;
-
-    D3D10_BUFFER_DESC bd;
-    bd.Usage = D3D10_USAGE_DYNAMIC;
-	bd.ByteWidth = sizeof( SimpleVertex ) * numVertices;
-    bd.BindFlags = D3D10_BIND_VERTEX_BUFFER;
-    bd.CPUAccessFlags = D3D10_CPU_ACCESS_WRITE;
-    bd.MiscFlags = 0;
-
-	HRESULT hr = g_pd3dDevice->CreateBuffer( &bd, NULL, &g_pEdgeVertexBuffer );
-
-    if( FAILED( hr ) )
-        return hr;
-	
-	return hr;
-}
-
-//--------------------------------------------------------------------------------------
-// Read and process the BVH file
-//--------------------------------------------------------------------------------------
-HRESULT ReadBVH()
-{
-	ifstream * bvhFile = new ifstream();
-	bvhFile->open( "Jog.bvh" );
-	
-	if( !bvhFile->is_open() )
-	{
-		cerr << "BVH File not opened.";
-		return E_FAIL;
-	}
-
-	string line;
-
-	vector<string> lines;
-
-	while( !bvhFile->eof() ) 
-	{
-		getline( *bvhFile, line );
-		lines.push_back( line );
-	}
-
-	bvhFile->close();
-	delete bvhFile;
-
-	if ( lines[0] != "HIERARCHY" && lines[0] != "﻿HIERARCHY" )
-		return E_FAIL;
-
-	int lineNum = 1;
-
-	if ( FAILED(ProcessHierarchy(lines, &lineNum, &g_numEdges ) ) )
-		return E_FAIL;
-
-	if ( lines[lineNum++] != "MOTION" )
-		return E_FAIL;
-	
-	if( FAILED( ProcessMotionData( lines, &lineNum ) ) )
-		return E_FAIL;
-
-	return S_OK;
-}
-
-
-//--------------------------------------------------------------------------------------
-// Read and process the Hierarchy section of the BVH file
-//
-// Parameters:
-// lines - Vector of strings, each is a line from the bvh file
-// lineNum - Current line number being processed
-// numEdges - Number of edges - parent/child node relations
-//--------------------------------------------------------------------------------------
-HRESULT ProcessHierarchy( vector<string> lines, int * lineNum, int * numEdges )
-{
-    int depth = 0;
-	
-    Node * curNode;
-
-    do
-    {
-		// Process each line, the first substring of each line determines the process
-
-		string line = lines[( *lineNum )++];
-
-		// position of the index to start string comparison
-		// (skip leading white space)
-		int pos = line.find_first_not_of( ' \t', 0 );
-
-		if( line.length() > 0 ) {
-
-			
-			// split each line into a vector of strings
-			/*vector<string> line;
-			int i, s = 0;
-			string::size_type loc = stringLine.find(' ', s);
-
-			while(loc != string::npos)
-			{
-				line.push_back(stringLine.substr(s, loc));
-				s = loc;
-				loc = stringLine.find(' ', s);
-			}*/
-
-			//char * segment = strtok((char*)line.c_str(), " ");
-
-			if ( line.compare( 0, 1, "{" ) == 0 ) {} // do nothing
-			else if ( line.compare( pos, 1, "}" ) == 0 )
-			{
-				Node * parent = curNode->GetParent();
-				if ( parent != NULL )
-				{
-					++*numEdges;
-					curNode = parent;
-				}
-				--depth;
-			} 
-			else if ( line.compare( pos, 4, "ROOT" ) == 0)
-			{
-				curNode = new Node( line.substr( pos, 4 ) );
-
-				g_nodes.push_back( curNode );
-
-				++depth;
-			}
-			else if ( line.compare( pos, 5, "JOINT" ) == 0 )
-			{
-				Node * joint = new Node( line.substr( pos, 5 ), curNode );
-				curNode->AddChild( joint );
-				curNode = joint;
-
-				++depth;
-			}
-			else if ( line.compare( pos, 3, "End" ) == 0 )
-			{
-				Node * end = new Node( "", curNode );
-				curNode->AddChild( end );
-				curNode = end;
-
-				++depth;
-			}
-			else if ( line.compare( pos, 6, "OFFSET" ) == 0 )
-			{
-				D3DXVECTOR3 offset;
-
-				pos += 6;
-				int endPos = line.find( ' \t', pos + 1 );
-				offset.x = ( float )strtod( line.substr( pos, endPos - pos ).c_str(), NULL );
-
-				pos = endPos + 1;
-				endPos = line.find( ' \t', pos );
-				offset.y = ( float )strtod( line.substr( pos, endPos - pos ).c_str(), NULL );
-
-				pos = endPos + 1;
-				endPos = line.find( ' \t', pos );
-				offset.z = ( float )strtod( line.substr( pos ).c_str(), NULL );
-
-				curNode->SetOffset( offset );
-			}
-			else if ( line.compare( pos, 8, "CHANNELS" ) == 0 )
-			{
-				pos += 8;
-				int endPos = line.find( ' \t', pos + 1 );
-				int numChannels = ( int )strtol( line.substr( pos, endPos - pos ).c_str(), NULL, 10 );
-
-				for ( int c = 2; c < numChannels + 2; ++c )
-				{
-					Channel channel = Channel::None;
-
-					pos = endPos + 1;
-					endPos = line.find( ' \t', pos );
-					channel = parseChannel( line.substr( pos, endPos - pos ) );
-					
-					curNode->AddChannel( channel );
-				}
-			}
-		}
-    } while ( depth > 0 );
-
-	return S_OK;
-}
-
-HRESULT ProcessMotionData( vector<string> lines, int * lineNum )
-{
-    while( *lineNum < lines.size() - 1 ) 
-    {        
-		string line = lines[( *lineNum )++];
-
-		if ( line.compare( 0, 7, "Frames:" ) == 0 )
-        {
-			int begPos = line.find_first_not_of( ' ', 8 );
-			g_numFrames = ( int )strtol( line.substr( begPos ).c_str(), NULL, 10 );
-        }
-		else if ( line.compare( 0, 11, "Frame Time:" ) == 0 )
-        {
-			int begPos = line.find_first_not_of( ' ', 12 );
-			g_frameTime = ( float )strtod( line.substr( begPos ).c_str(), NULL );
-        }
-        else
-        {
-			// Parse the frame data.
-			//
-			// Each line is one sample of motion data. 
-            // The numbers appear in the order of the channel specifications 
-			// as the skeleton hierarchy was parsed.
-			
-			vector<float> data;
-
-			char * lineEnd = ( char * )line.c_str();
-			while( errno != ERANGE && *lineEnd )
-			{
-				data.push_back( ( float )strtod( lineEnd, &lineEnd ) );
-			} 
-
-			// recursively iterate through nodes, adding a KeyFrame to each
-			int dataIndex = 0;
-			for( int i = 0; i < g_nodes.size(); i++ )
-			{
-				if( FAILED( InitNodeFrames( g_nodes[i], &dataIndex, data ) ) )
-					return E_FAIL;
-			}
-        }
-    }
-
-	return S_OK;
-}
-
-HRESULT InitNodeFrames( Node * node, int * dataIndex, vector<float> data ) 
-{
-	vector<Node*> children = node->GetChildren();
-	if( children.size() > 0 )
-	{
-		KeyFrame keyFrame;
-		keyFrame.translation = getNodeTranslation( node, dataIndex, data );
-		keyFrame.rotation = getNodeRotation( node, dataIndex, data );
-		node->AddKeyFrame( keyFrame );
-			
-		for( int i = 0; i < children.size(); i++ )
-		{
-			InitNodeFrames( children[i], dataIndex, data );
-		}
-	}
-
-	return S_OK;
-}
-
-D3DXMATRIX getNodeRotation( Node * node, int * dataIndex, vector<float> data )
-{
-	D3DXMATRIX x, y, z;
-	D3DXMatrixIdentity( &x );
-	D3DXMatrixIdentity( &y );
-	D3DXMatrixIdentity( &z );
-
-	vector<Channel> channels = node->GetChannels();
-
-	for( int i = 0; i < channels.size(); ++i )
-	{
-		if ( ( channels[i] & Channel::Xrotation ) == Channel::Xrotation )
-		{
-			D3DXMatrixRotationX( &x, data[( *dataIndex )++] * ( D3DX_PI / 180.0f ) );
-		}
-		else if ( ( channels[i] & Channel::Yrotation ) == Channel::Yrotation )
-		{
-			D3DXMatrixRotationY( &y, data[( *dataIndex )++] * ( D3DX_PI / 180.0f ) );
-		}
-		else if ( ( channels[i] & Channel::Zrotation ) == Channel::Zrotation )
-		{
-			D3DXMatrixRotationZ( &z, data[( *dataIndex )++] * ( D3DX_PI / 180.0f ) );			
-		}
-	}
-	
-    return y * x * z;
-}
-
-D3DXMATRIX getNodeTranslation( Node * node, int * dataIndex, vector<float> data )
-{
-	float x = 0, y = 0, z = 0;
-
-	vector<Channel> channels = node->GetChannels();
-
-	for( int i = 0; i < channels.size(); ++i )
-	{
-		if ( ( channels[i] & Channel::Xposition ) == Channel::Xposition )
-		{
-			x = data[( *dataIndex )++];
-		}
-		else if ( ( channels[i] & Channel::Yposition ) == Channel::Yposition )
-		{
-			y = data[( *dataIndex )++];
-		}
-		else if ( ( channels[i] & Channel::Zposition ) == Channel::Zposition )
-		{
-			z = data[( *dataIndex )++];
-		}
-	}
-
-	D3DXMATRIX translation;
-	D3DXMatrixTranslation(&translation, x, y, z);
-
-    return translation;
-}
-
-//--------------------------------------------------------------------------------------
-// Clean up the objects we've created
-//--------------------------------------------------------------------------------------
 void CleanupDevice()
 {
     if( g_pd3dDevice ) g_pd3dDevice->ClearState();
 
-    if( g_pCubeVertexBuffer ) g_pCubeVertexBuffer->Release();
-    if( g_pCubeIndexBuffer ) g_pCubeIndexBuffer->Release();
-    if( g_pEdgeVertexBuffer ) g_pEdgeVertexBuffer->Release();
-    if( g_pEdgeIndexBuffer ) g_pEdgeIndexBuffer->Release();
     if( g_pVertexLayout ) g_pVertexLayout->Release();
     if( g_pEffect ) g_pEffect->Release();
     if( g_pRenderTargetView ) g_pRenderTargetView->Release();
@@ -701,24 +296,6 @@ void CleanupDevice()
     if( g_pDepthStencilView ) g_pDepthStencilView->Release();
     if( g_pSwapChain ) g_pSwapChain->Release();
     if( g_pd3dDevice ) g_pd3dDevice->Release();
-}
-
-void CleanupNodes()
-{
-	for( int i = 0; i < g_nodes.size(); ++i )
-	{
-		CleanupNode( g_nodes[i] );
-	}
-}
-
-void CleanupNode( Node * node )
-{
-	vector<Node*> children = node->GetChildren();
-	for( int i = 0; i < children.size(); ++i ) 
-	{
-		CleanupNode( children[i] );
-	}
-	delete node;
 }
 
 //--------------------------------------------------------------------------------------
@@ -747,13 +324,11 @@ LRESULT CALLBACK WndProc( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam 
     return 0;
 }
 
-
-//--------------------------------------------------------------------------------------
-// Render a frame
-//--------------------------------------------------------------------------------------
+/// <summary>
+/// Render a frame.
+/// </summary>
 void Render()
 {
-	// Update time and frame, looping last frame to first frame
     static float t = 0.0f;
     static DWORD dwTimeStart = 0;
     DWORD dwTimeCur = GetTickCount();
@@ -761,7 +336,12 @@ void Render()
         dwTimeStart = dwTimeCur;
 
     t = ( dwTimeCur - dwTimeStart ) / 1000.0f;
-	g_curFrame = ( int )( t / g_frameTime ) % g_numFrames;
+
+	// Update figure
+	g_figure->Update(t);
+	D3DXVECTOR3 Eye( 500.0f, 10.0f, 500.0f );
+	D3DXVECTOR3 Up( 0.0f, 1.0f, 0.0f );
+	g_figure->LookAt( &Eye, &Up, g_pViewVariable);
 
     //
     // Clear the back buffer
@@ -774,128 +354,11 @@ void Render()
     //
     g_pd3dDevice->ClearDepthStencilView( g_pDepthStencilView, D3D10_CLEAR_DEPTH, 1.0f, 0 );
 
-	// Update view matrix - point at first root node
-	D3DXVECTOR3 Eye( 500.0f, 10.0f, 500.0f );
-	KeyFrame keyFrame = g_nodes[0]->GetKeyFrame( g_curFrame );	
-	D3DXVECTOR3 At, scale;
-	D3DXQUATERNION rot;
-	if( FAILED( D3DXMatrixDecompose( &scale, &rot, &At, &keyFrame.translation ) ) )
-		return;
-	D3DXVECTOR3 Up( 0.0f, 1.0f, 0.0f );
-	D3DXMatrixLookAtLH( &g_View, &Eye, &At, &Up );
-    g_pViewVariable->SetMatrix( ( float* )&g_View );
-
-	// Set topology
-	g_pd3dDevice->IASetPrimitiveTopology( D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST );
-
-	// Set cube buffers
-	UINT stride = sizeof( SimpleVertex );
-	UINT offset = 0;
-    g_pd3dDevice->IASetVertexBuffers( 0, 1, &g_pCubeVertexBuffer, &stride, &offset );
-    g_pd3dDevice->IASetIndexBuffer( g_pCubeIndexBuffer, DXGI_FORMAT_R32_UINT, 0 );
-
-	// Render the nodes
-	g_EdgeVertices.clear();
-	for( int i = 0; i < g_nodes.size(); ++i )
-	{
-		RenderNode( g_nodes[i], g_World );
-	}
-
-	// Render the edges
-	RenderEdges();
+	// Render figure
+	g_figure->Render();
 
     //
     // Present our back buffer to our front buffer
     //
     g_pSwapChain->Present( 0, 0 );
-}
-
-void RenderNode( Node * node, D3DXMATRIX world )
-{
-	D3DXVECTOR3 offset = node->GetOffset();
-    D3DXMATRIX mOffset;
-	D3DXMatrixTranslation( &mOffset, offset.x, offset.y, offset.z );
-
-	Node * parent = node->GetParent();
-	if( parent != NULL ) 
-	{
-		SimpleVertex vertex;
-		vertex.Pos = D3DXVECTOR3( 0, 0, 0 );
-		vertex.Color = D3DXVECTOR4( 1, 1, 1, 1 );
-		D3DXVec3TransformCoord( &vertex.Pos, &vertex.Pos, &world );
-		g_EdgeVertices.push_back( vertex );
-	}
-
-	if( g_curFrame < node->GetNumKeyFrames() )
-	{
-		KeyFrame keyFrame = node->GetKeyFrame( g_curFrame );
-		world = keyFrame.rotation * keyFrame.translation * mOffset * world;
-	} else {
-		world = mOffset * world;	
-	}	
-
-	if( parent != NULL ) 
-	{
-		SimpleVertex vertex;
-		vertex.Pos = D3DXVECTOR3( 0, 0, 0 );
-		vertex.Color = D3DXVECTOR4( 1, 1, 1, 1 );
-		D3DXVec3TransformCoord( &vertex.Pos, &vertex.Pos, &world );
-		g_EdgeVertices.push_back( vertex );
-	}
-
-    //
-    // Update variables for the cube
-    //
-    g_pWorldVariable->SetMatrix( ( float* )&world );
-
-    //
-    // Render the cube
-    //
-    D3D10_TECHNIQUE_DESC techDesc;
-    g_pTechniqueRender->GetDesc( &techDesc );
-    for( UINT p = 0; p < techDesc.Passes; ++p )
-    {
-        g_pTechniqueRender->GetPassByIndex( p )->Apply( 0 );
-		g_pd3dDevice->DrawIndexed( 36, 0, 0 );
-    }
-	
-	//
-	// Render the children
-	//
-	vector<Node*> children = node->GetChildren();
-	for( int i = 0; i < children.size(); ++i )
-	{
-		RenderNode( children[i], world );
-	}
-}
-
-void RenderEdges() 
-{
-	// Set edge vertex data
-	SimpleVertex *pData = NULL;
-	if( SUCCEEDED( g_pEdgeVertexBuffer->Map( D3D10_MAP_WRITE_DISCARD, 0, reinterpret_cast< void** >( &pData ) ) ) )
-	{
-		  memcpy( pData, &g_EdgeVertices[0], sizeof( SimpleVertex ) * g_numEdges * 2 );
-		  g_pEdgeVertexBuffer->Unmap();
-	}
-
-	// Set vertex buffer
-	UINT stride = sizeof( SimpleVertex );
-	UINT offset = 0;
-    g_pd3dDevice->IASetVertexBuffers( 0, 1, &g_pEdgeVertexBuffer, &stride, &offset );
-
-    // Update variables for the edges
-    g_pWorldVariable->SetMatrix( ( float* )&g_World );
-    
-	// Set topology
-	g_pd3dDevice->IASetPrimitiveTopology( D3D10_PRIMITIVE_TOPOLOGY_LINELIST );
-
-    // Render the edges
-    D3D10_TECHNIQUE_DESC techDesc;
-    g_pTechniqueRender->GetDesc( &techDesc );
-    for( UINT p = 0; p < techDesc.Passes; ++p )
-    {
-        g_pTechniqueRender->GetPassByIndex( p )->Apply( 0 );
-		g_pd3dDevice->Draw( g_numEdges * 2, 0 );
-    }	
 }

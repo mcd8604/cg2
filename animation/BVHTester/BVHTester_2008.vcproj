@@ -134,6 +134,7 @@
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="1"
 				UsePrecompiledHeader="0"
+				GenerateXMLDocumentationFiles="true"
 				WarningLevel="3"
 				Detect64BitPortabilityProblems="false"
 				DebugInformationFormat="3"
@@ -346,6 +347,14 @@
 	<References>
 	</References>
 	<Files>
+		<File
+			RelativePath=".\BVHFigure.cpp"
+			>
+		</File>
+		<File
+			RelativePath=".\BVHFigure.h"
+			>
+		</File>
 		<File
 			RelativePath=".\BVHTester.cpp"
 			>

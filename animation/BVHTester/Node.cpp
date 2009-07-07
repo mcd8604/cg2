@@ -5,7 +5,7 @@ namespace BVH
 	Node::Node(string name)
 	{
 		this->name = name;
-		this->parent = NULL;
+		parent = NULL;
 	}
 
 	Node::Node(string name, Node * parent)
@@ -16,6 +16,15 @@ namespace BVH
 
 	Node::~Node(void)
 	{
+	}
+
+	void Node::Cleanup()
+	{
+		for( int i = 0; i < children.size(); ++i ) 
+		{
+			children[i]->Cleanup();
+			delete children[i];
+		}
 	}
 
 	Node * Node::GetParent()
@@ -56,11 +65,6 @@ namespace BVH
 	void Node::AddChannel(Channel channel)
 	{
 		channels.push_back(channel);
-	}
-
-	void Node::RemoveChannel(Channel channel)
-	{
-		// TODO
 	}
 
 	vector<Channel> Node::GetChannels()

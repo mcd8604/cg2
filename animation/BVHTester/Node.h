@@ -20,7 +20,7 @@ namespace BVH
 		Yrotation = 32
 	};
 
-	Channel parseChannel(string channelName);
+	Channel parseChannel( string channelName );
 
 	struct KeyFrame
 	{
@@ -39,21 +39,21 @@ namespace BVH
 		vector<Channel> channels;
 		vector<KeyFrame> keyFrames;
 	public:
-		Node(string name);
-		Node(string name, Node * parent);
-		~Node(void);
+		Node( string name );
+		Node( string name, Node * parent );
+		~Node( void );
+		void Cleanup();
 		Node * GetParent();
-		void SetName(string name);
+		void SetName( string name );
 		string GetName();
-		void SetOffset(D3DXVECTOR3 offset);
+		void SetOffset( D3DXVECTOR3 offset );
 		D3DXVECTOR3 GetOffset();
-		void AddChild(Node * childNode);
+		void AddChild( Node * childNode );
 		vector<Node*> GetChildren();
-		void AddChannel(Channel channel);
-		void RemoveChannel(Channel channel);
+		void AddChannel( Channel channel );
 		vector<Channel> GetChannels();
-		void AddKeyFrame(KeyFrame keyFrame);
-		KeyFrame GetKeyFrame(int frameIndex);
+		void AddKeyFrame( KeyFrame keyFrame );
+		KeyFrame GetKeyFrame( int frameIndex );
 		int GetNumKeyFrames();
 	};
 }
