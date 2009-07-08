@@ -37,8 +37,8 @@ protected:
 	HRESULT ProcessHierarchy( vector<string> lines, int * lineNum, int * numEdges );
 	HRESULT ProcessMotionData( vector<string> lines, int * lineNum );
 	HRESULT InitNodeFrames( Node * node, vector<float> data , int * dataIndex);
-	D3DXMATRIX GetNodeRotation( Node * node, vector<float> data, int * dataIndex );
-	D3DXMATRIX GetNodeTranslation( Node * node, vector<float> data, int * dataIndex );
+	D3DXMATRIX GetNodeRotation( vector<Channel> channels, vector<float> data, int * dataIndex );
+	D3DXMATRIX GetNodeTranslation( vector<Channel> channels, vector<float> data, int * dataIndex );
 	HRESULT CreateVertexBuffer();
 public:
 	BVHFigure(void);
