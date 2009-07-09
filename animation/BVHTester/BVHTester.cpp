@@ -40,6 +40,7 @@ ID3D10EffectMatrixVariable* g_pWorldVariable = NULL;
 D3DXMATRIX                  g_Projection;
 
 BVHFigure*					g_figure;
+BVHFigure*					g_figure2;
 
 //--------------------------------------------------------------------------------------
 // Forward declarations
@@ -66,11 +67,18 @@ int WINAPI wWinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdL
     }
 
 	g_figure = new BVHFigure();
+	g_figure2 = new BVHFigure();
 	
     if( FAILED( g_figure->ReadBVH("Jog.bvh") ) )
 		return E_FAIL;
+	
+    if( FAILED( g_figure2->ReadBVH("wave.bvh") ) )
+		return E_FAIL;
 
     if( FAILED( g_figure->Initialize( g_pd3dDevice, g_pTechniqueRender, g_pWorldVariable ) ) )
+		return E_FAIL;
+
+    if( FAILED( g_figure2->Initialize( g_pd3dDevice, g_pTechniqueRender, g_pWorldVariable ) ) )
 		return E_FAIL;
 
     // Main message loop
@@ -89,9 +97,11 @@ int WINAPI wWinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdL
     }
 	
 	g_figure->Cleanup();
+	g_figure2->Cleanup();
     CleanupDevice();
 
 	delete g_figure;
+	delete g_figure2;
 
     return ( int )msg.wParam;
 }
@@ -339,9 +349,11 @@ void Render()
 
 	// Update figure
 	g_figure->Update(t);
+	g_figure2->Update(t);
 	D3DXVECTOR3 Eye( 500.0f, 10.0f, 500.0f );
 	D3DXVECTOR3 Up( 0.0f, 1.0f, 0.0f );
 	g_figure->LookAt( &Eye, &Up, g_pViewVariable);
+	g_figure2->LookAt( &Eye, &Up, g_pViewVariable);
 
     //
     // Clear the back buffer
@@ -356,6 +368,7 @@ void Render()
 
 	// Render figure
 	g_figure->Render();
+	g_figure2->Render();
 
     //
     // Present our back buffer to our front buffer
