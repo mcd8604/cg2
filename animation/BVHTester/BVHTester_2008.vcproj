@@ -356,6 +356,14 @@
 			>
 		</File>
 		<File
+			RelativePath=".\BVHNode.cpp"
+			>
+		</File>
+		<File
+			RelativePath=".\BVHNode.h"
+			>
+		</File>
+		<File
 			RelativePath=".\BVHTester.cpp"
 			>
 		</File>
@@ -398,14 +406,6 @@
 		</File>
 		<File
 			RelativePath=".\Legs.bvh"
-			>
-		</File>
-		<File
-			RelativePath=".\Node.cpp"
-			>
-		</File>
-		<File
-			RelativePath=".\Node.h"
 			>
 		</File>
 		<File

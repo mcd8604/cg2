@@ -4,12 +4,11 @@
 #include <fstream>
 #include <string>
 
-#include "Node.h"
+#include "BVHNode.h"
 
 #include <d3dx10.h>
 
 using namespace std;
-using namespace BVH;
 
 struct SimpleVertex
 {
@@ -28,7 +27,7 @@ protected:
 	ID3D10Buffer*               cubeIndexBuffer;
 	ID3D10EffectMatrixVariable* worldVariable;
 	D3DXMATRIX                  world;
-	vector<Node*>				nodes;
+	vector<BVHNode*>				nodes;
 	vector<SimpleVertex>		edgeVertices;
 	int							numEdges;
 	int							curFrame;
@@ -36,9 +35,9 @@ protected:
 	float						frameTime;
 	HRESULT ProcessHierarchy( vector<string> lines, int * lineNum, int * numEdges );
 	HRESULT ProcessMotionData( vector<string> lines, int * lineNum );
-	HRESULT InitNodeFrames( Node * node, vector<float> data , int * dataIndex);
-	D3DXMATRIX GetNodeRotation( vector<Channel> channels, vector<float> data, int * dataIndex );
-	D3DXMATRIX GetNodeTranslation( vector<Channel> channels, vector<float> data, int * dataIndex );
+	HRESULT InitBVHNodeFrames( BVHNode * node, vector<float> data , int * dataIndex);
+	D3DXMATRIX GetBVHNodeRotation( vector<Channel> channels, vector<float> data, int * dataIndex );
+	D3DXMATRIX GetBVHNodeTranslation( vector<Channel> channels, vector<float> data, int * dataIndex );
 	HRESULT CreateVertexBuffer();
 public:
 	BVHFigure(void);
@@ -50,7 +49,7 @@ public:
 	void Update( float time );
 	void LookAt( D3DXVECTOR3 * Eye, D3DXVECTOR3 * Up, ID3D10EffectMatrixVariable * viewVariable );
 	void Render();
-	void RenderNode( Node * node, D3DXMATRIX parentWorld );
+	void RenderBVHNode( BVHNode * node, D3DXMATRIX parentWorld );
 	void RenderEdges();
 	void Cleanup();
 };

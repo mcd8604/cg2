@@ -12,13 +12,12 @@
 #include <d3d10.h>
 #include <d3dx10.h>
 
-#include "Node.h"
+#include "BVHNode.h"
 #include "BVHFigure.h"
 
 #include "resource.h"
 
 using namespace std;
-using namespace BVH;
 
 //--------------------------------------------------------------------------------------
 // Global Variables
