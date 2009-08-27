@@ -70,8 +70,11 @@ vector<Channel> BVHNode::GetChannels()
 	return channels;
 }
 
-void BVHNode::AddKeyFrame(KeyFrame keyFrame)
+void BVHNode::AddKeyFrame(D3DXMATRIX translation, D3DXMATRIX rotation)
 {
+	KeyFrame keyFrame;
+	keyFrame.translation = translation;
+	keyFrame.rotation = rotation;
 	keyFrames.push_back(keyFrame);
 }
 
