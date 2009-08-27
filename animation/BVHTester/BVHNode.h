@@ -50,7 +50,7 @@ public:
 	vector<BVHNode*> GetChildren();
 	void AddChannel( Channel channel );
 	vector<Channel> GetChannels();
-	void AddKeyFrame( KeyFrame keyFrame );
+	void AddKeyFrame( D3DXMATRIX translation, D3DXMATRIX rotation );
 	KeyFrame GetKeyFrame( int frameIndex );
 	int GetNumKeyFrames();
 };
